@@ -32,6 +32,8 @@ export interface ContainerSummary {
     status: string;
     createdAt: string | null;
     gameServer: GameServerStatus;
+    /** The dashboard's own container; it cannot be stopped, restarted or deleted through the dashboard. */
+    dashboard: boolean;
 }
 
 export interface ContainerOverview {
@@ -80,6 +82,8 @@ export interface ContainerDetails {
     gameServer: GameServerStatus;
     /** What automatic detection would result in. */
     detectedGameServer: GameServerStatus;
+    /** The dashboard's own container; it cannot be stopped, restarted or deleted through the dashboard. */
+    dashboard: boolean;
 }
 
 export interface LogLine {

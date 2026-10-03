@@ -316,6 +316,31 @@ class ContainerServiceTest {
     }
 
     @Test
+    void dashboardCannotStopRestartOrDeleteItself() throws Exception {
+        InspectContainerResponse self = DOCKER_JSON.readValue("""
+                {"Id": "self", "Name": "/serverdashboard", "State": {"Status": "running"},
+                 "Config": {"Labels": {"serverdashboard.self": "true"}}}
+                """, InspectContainerResponse.class);
+        when(dockerClient.inspectContainerCmd("self").exec()).thenReturn(self);
+
+        for (Runnable action : List.<Runnable>of(
+                () -> containerService.stop("self", "kevin"),
+                () -> containerService.restart("self", "kevin"),
+                () -> containerService.forceStop("self", "kevin"),
+                () -> containerService.delete("self", "kevin"))) {
+            assertThatThrownBy(action::run)
+                    .isInstanceOfSatisfying(ApiException.class, ex -> {
+                        assertThat(ex.getStatus()).isEqualTo(HttpStatus.CONFLICT);
+                        assertThat(ex.getMessage()).contains("dashboard's own container");
+                    });
+        }
+        verify(dockerClient, never()).stopContainerCmd(anyString());
+        verify(dockerClient, never()).restartContainerCmd(anyString());
+        verify(dockerClient, never()).killContainerCmd(anyString());
+        verify(dockerClient, never()).removeContainerCmd(anyString());
+    }
+
+    @Test
     void classificationIsStoredByContainerName() throws Exception {
         stubState("abc123", "running");
         ClassificationRequest request = new ClassificationRequest(ClassificationRequest.Mode.NOT_GAME_SERVER, null);

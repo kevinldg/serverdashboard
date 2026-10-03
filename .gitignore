@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+!.env.production.example
 *.local
 
 # SSH keys & certificates
@@ -16,6 +17,9 @@ id_*
 *.key
 *.p12
 *.pfx
+
+# Frontend build embedded during the Docker build
+backend/src/main/resources/static/
 
 # IDE
 .idea/

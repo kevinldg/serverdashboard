@@ -12,6 +12,7 @@ import java.util.Map;
  * @param startedAt          null if the container has never been started
  * @param gameServer         effective game server status (including a manual classification)
  * @param detectedGameServer what automatic detection results in, ignoring a manual classification
+ * @param dashboard          the dashboard's own container (cannot be stopped or deleted through the dashboard)
  */
 public record ContainerDetailsResponse(
         String id,
@@ -28,7 +29,8 @@ public record ContainerDetailsResponse(
         List<MountInfo> mounts,
         Configuration configuration,
         GameServerStatus gameServer,
-        GameServerStatus detectedGameServer
+        GameServerStatus detectedGameServer,
+        boolean dashboard
 ) {
 
     /**

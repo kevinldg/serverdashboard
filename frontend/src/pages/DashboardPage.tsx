@@ -96,6 +96,11 @@ export function DashboardPage() {
                                             <span className="ml-2">
                                                 <GameServerBadge status={container.gameServer} />
                                             </span>
+                                            {container.dashboard && (
+                                                <span className="ml-2 rounded-full bg-sky-950 px-2 py-0.5 text-xs font-medium text-sky-300 ring-1 ring-inset ring-sky-800">
+                                                    this dashboard
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-4 py-3 font-mono text-xs text-slate-300">{container.image}</td>
                                         <td className="px-4 py-3">

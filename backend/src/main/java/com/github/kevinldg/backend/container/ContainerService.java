@@ -61,6 +61,12 @@ public class ContainerService {
 
     private static final Set<String> STOPPED_STATES = Set.of("created", "exited", "dead");
 
+    /**
+     * Label of the dashboard's own container. It cannot be stopped, restarted, or deleted through the application,
+     * because the dashboard could not bring itself back.
+     */
+    public static final String SELF_LABEL = "serverdashboard.self";
+
     private final DockerClient dockerClient;
     private final DockerProperties dockerProperties;
     private final GameServerService gameServerService;
@@ -116,7 +122,8 @@ public class ContainerService {
                         config != null && config.getLabels() != null ? new TreeMap<>(config.getLabels()) : Map.of()
                 ),
                 gameServerService.detect(gameServerRef),
-                gameServerService.detectAutomatically(gameServerRef)
+                gameServerService.detectAutomatically(gameServerRef),
+                isSelf(config != null ? config.getLabels() : null)
         );
     }
 
@@ -146,12 +153,14 @@ public class ContainerService {
      * Sends SIGTERM and gives the container {@code app.docker.stop-timeout} to shut down before Docker kills it.
      */
     public void stop(String containerId, String actor) {
+        requireNotSelf(inspect(containerId), "stopped");
         boolean changed = runDockerAction(
                 () -> dockerClient.stopContainerCmd(containerId).withTimeout(stopTimeoutSeconds()).exec());
         logAction(actor, "stopped", containerId, changed);
     }
 
     public void restart(String containerId, String actor) {
+        requireNotSelf(inspect(containerId), "restarted");
         runDockerAction(() -> dockerClient.restartContainerCmd(containerId).withTimeout(stopTimeoutSeconds()).exec());
         logAction(actor, "restarted", containerId, true);
     }
@@ -160,8 +169,10 @@ public class ContainerService {
      * Kills the container immediately (SIGKILL), without a clean shutdown.
      */
     public void forceStop(String containerId, String actor) {
+        InspectContainerResponse container = inspect(containerId);
+        requireNotSelf(container, "stopped");
         // Docker rejects killing a container that is not running; treat that as "already stopped".
-        if (STOPPED_STATES.contains(getState(containerId))) {
+        if (STOPPED_STATES.contains(container.getState() != null ? container.getState().getStatus() : null)) {
             logAction(actor, "force-stopped", containerId, false);
             return;
         }
@@ -174,6 +185,7 @@ public class ContainerService {
      */
     public void delete(String containerId, String actor) {
         InspectContainerResponse container = inspect(containerId);
+        requireNotSelf(container, "deleted");
         if (!STOPPED_STATES.contains(container.getState() != null ? container.getState().getStatus() : null)) {
             throw new ApiException(HttpStatus.CONFLICT, "Stop the container before deleting it.");
         }
@@ -197,6 +209,17 @@ public class ContainerService {
     String getState(String containerId) {
         InspectContainerResponse container = inspect(containerId);
         return container.getState() != null ? container.getState().getStatus() : null;
+    }
+
+    private static void requireNotSelf(InspectContainerResponse container, String action) {
+        if (isSelf(container.getConfig() != null ? container.getConfig().getLabels() : null)) {
+            throw new ApiException(HttpStatus.CONFLICT, "This is the dashboard's own container. It cannot be " + action
+                    + " through the dashboard; use Docker on the server instead.");
+        }
+    }
+
+    private static boolean isSelf(Map<String, String> labels) {
+        return labels != null && "true".equalsIgnoreCase(labels.get(SELF_LABEL));
     }
 
     private InspectContainerResponse inspect(String containerId) {
@@ -261,7 +284,7 @@ public class ContainerService {
     private static ContainerSummary toSummary(Container container, GameServerStatus gameServer) {
         Instant createdAt = container.getCreated() != null ? Instant.ofEpochSecond(container.getCreated()) : null;
         return new ContainerSummary(container.getId(), nameOf(container), container.getImage(), container.getState(),
-                container.getStatus(), createdAt, gameServer);
+                container.getStatus(), createdAt, gameServer, isSelf(container.getLabels()));
     }
 
     private static List<MountInfo> toMounts(List<InspectContainerResponse.Mount> mounts) {

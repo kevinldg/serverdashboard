@@ -59,7 +59,7 @@ const ACTIONS: Record<Action, ActionDefinition> = {
 };
 
 interface ContainerActionsProps {
-    container: { id: string; name: string; state: ContainerState | null };
+    container: { id: string; name: string; state: ContainerState | null; dashboard: boolean };
     /** Needed for the delete confirmation, which lists the data that remains. */
     mounts?: MountInfo[];
     /** "row": start/stop/restart for the dashboard table; "full": all actions for the details page. */
@@ -76,7 +76,9 @@ export function ContainerActions({ container, mounts = [], variant, onCompleted,
     const [confirming, setConfirming] = useState<Action | null>(null);
 
     const available = (variant === "row" ? (["start", "stop", "restart"] as const) : (Object.keys(ACTIONS) as Action[]))
-        .filter((action) => hasPermission(user, ACTIONS[action].permission) && ACTIONS[action].appliesTo(container.state));
+        .filter((action) => hasPermission(user, ACTIONS[action].permission) && ACTIONS[action].appliesTo(container.state))
+        // The dashboard cannot stop, restart, or delete itself (also enforced by the backend)
+        .filter((action) => !container.dashboard || action === "start");
 
     async function run(action: Action) {
         setConfirming(null);

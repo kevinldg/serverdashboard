@@ -4,8 +4,16 @@ Decisions that complement `requirements.md`. Update this file when a decision ch
 
 ## Deployment
 
-- In production, the backend runs directly on the Debian 12 Docker host.
-- Spring Boot serves the built frontend as static resources (single origin, no CORS).
+- In production, the dashboard runs as a Docker container on the Debian 12 host it manages (see `docs/deployment.md`):
+  built on the server with `docker compose up -d --build`, reachable on the local network only (port 8090, HTTP).
+- The image (multi-stage `Dockerfile`) embeds the built frontend; Spring Boot serves it, and frontend routes fall back
+  to `index.html` so page reloads work. Hashed assets are cached for a year, `index.html` is not cached.
+- The container runs as a non-root user (UID 10001) with a read-only file system and `no-new-privileges`; access to
+  `/var/run/docker.sock` comes from the docker group (`DOCKER_GID`).
+- The dashboard's own container has the label `serverdashboard.self=true` and cannot be stopped, restarted, or deleted
+  through the dashboard.
+- Production uses a separate MongoDB Atlas database. Configuration comes from `.env` next to `docker-compose.yml`
+  (see `.env.production.example`).
 - During local development, the Vite dev server proxies `/api` to the backend.
 
 ## Docker Access
@@ -104,6 +112,12 @@ Decisions that complement `requirements.md`. Update this file when a decision ch
   every start; the editor shows a hint.
 - The frontend loads Monaco (bundled, no CDN, only the needed languages) lazily when a file is opened.
 
+## System Information
+
+- `GET /api/admin/system` (`SYSTEM_INFO_VIEW`): application (version, build time, commit from `GIT_COMMIT`, start time,
+  Java), database (name, reachability; never the connection string), Docker host (version, OS, kernel, CPUs, memory,
+  storage) and resource counts. If Docker is unreachable, the other sections are still returned with the reason.
+
 ## Configuration & Secrets
 
 - Secrets are provided via environment variables.
@@ -131,6 +145,8 @@ Decisions that complement `requirements.md`. Update this file when a decision ch
 - The initial admin user is created from `INITIAL_ADMIN_USERNAME` and `INITIAL_ADMIN_PASSWORD` on startup
   if no admin exists. It is marked as "password change recommended".
 - Password reset via email is postponed. Password resets are performed by administrators.
+- Failed logins are limited in memory: 5 per username and 20 per client address within 15 minutes; further attempts
+  get 429 before the password is checked. A successful login resets the username's counter.
 
 ## Authorization
 

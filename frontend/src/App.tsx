@@ -17,6 +17,7 @@ import {DashboardPage} from "./pages/DashboardPage";
 import {LoginPage} from "./pages/LoginPage";
 import {MaintenancePage} from "./pages/MaintenancePage";
 import {MaintenanceSettingsPage} from "./pages/admin/MaintenanceSettingsPage";
+import {SystemPage} from "./pages/admin/SystemPage";
 
 // Monaco is large; it is only loaded when a file is opened.
 const ConfigFileEditorPage = lazy(() => import("./pages/configfiles/ConfigFileEditorPage"));
@@ -59,6 +60,7 @@ export default function App() {
                         <Route path="roles" element={<RequirePermission permission="ROLE_MANAGE"><RolesPage/></RequirePermission>}/>
                         <Route path="announcements" element={<RequirePermission permission="ANNOUNCEMENT_MANAGE"><AnnouncementsPage/></RequirePermission>}/>
                         <Route path="maintenance" element={<RequirePermission permission="MAINTENANCE_MANAGE"><MaintenanceSettingsPage/></RequirePermission>}/>
+                        <Route path="system" element={<RequirePermission permission="SYSTEM_INFO_VIEW"><SystemPage/></RequirePermission>}/>
                     </Route>
                 </Route>
             </Route>

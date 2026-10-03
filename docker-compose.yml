@@ -1,0 +1,31 @@
+# Runs the dashboard on the Docker host it manages. Configuration comes from .env (see .env.production.example).
+# Deployment and updates: docs/deployment.md
+services:
+  serverdashboard:
+    build:
+      context: .
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    image: serverdashboard:latest
+    container_name: serverdashboard
+    restart: unless-stopped
+    ports:
+      - "${DASHBOARD_PORT:-8090}:8080"
+    env_file: .env
+    environment:
+      DOCKER_HOST: unix:///var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    # The container runs as a non-root user; the docker group grants access to the socket
+    group_add:
+      - "${DOCKER_GID:-996}"
+    labels:
+      # The dashboard cannot stop, restart or delete its own container
+      serverdashboard.self: "true"
+      serverdashboard.gameserver: "none"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 1g

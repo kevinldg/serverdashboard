@@ -19,8 +19,9 @@ public record ContainerOverviewResponse(Statistics statistics, List<ContainerSum
      * @param state      Docker state, e.g. {@code running}, {@code exited}, {@code paused}, {@code restarting}
      * @param status     human-readable status from Docker, e.g. "Up 3 months (healthy)"
      * @param gameServer whether the container is a game server, and why
+     * @param dashboard  the dashboard's own container (cannot be stopped or deleted through the dashboard)
      */
     public record ContainerSummary(String id, String name, String image, String state, String status,
-                                   Instant createdAt, GameServerStatus gameServer) {
+                                   Instant createdAt, GameServerStatus gameServer, boolean dashboard) {
     }
 }

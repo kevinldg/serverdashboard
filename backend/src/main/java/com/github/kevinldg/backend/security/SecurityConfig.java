@@ -13,6 +13,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.AccountStatusException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.RequestCacheConfigurer;
@@ -21,6 +23,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
 import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.csrf.CsrfToken;
@@ -35,6 +38,7 @@ import tools.jackson.databind.json.JsonMapper;
  *     <li>CSRF protection uses the {@code XSRF-TOKEN} cookie and {@code X-XSRF-TOKEN} header (axios default).</li>
  *     <li>All {@code /api/**} endpoints require authentication; errors are returned as ProblemDetail JSON.</li>
  *     <li>Permissions are checked per endpoint with {@code @PreAuthorize("hasAuthority('PERMISSION')")}.</li>
+ *     <li>Failed logins are limited per username and client address (see {@link LoginThrottle}).</li>
  *     <li>While maintenance mode is active, only administrators can log in and use the API
  *         (see {@link MaintenanceModeFilter}).</li>
  * </ul>
@@ -53,6 +57,7 @@ public class SecurityConfig {
                                             AuthenticatedUserService authenticatedUserService,
                                             AuthService authService,
                                             MaintenanceService maintenanceService,
+                                            LoginThrottle loginThrottle,
                                             JsonMapper jsonMapper,
                                             @Qualifier("handlerExceptionResolver")
                                             HandlerExceptionResolver exceptionResolver) {
@@ -68,9 +73,14 @@ public class SecurityConfig {
                         // SPA route; also disables Spring Security's generated login page
                         .loginPage("/login")
                         .loginProcessingUrl("/api/auth/login")
-                        .successHandler(loginSuccessHandler(authService, maintenanceService, jsonMapper, exceptionResolver))
-                        .failureHandler((request, response, exception) ->
-                                exceptionResolver.resolveException(request, response, null, exception))
+                        .successHandler(loginSuccessHandler(authService, maintenanceService, loginThrottle, jsonMapper,
+                                exceptionResolver))
+                        .failureHandler((request, response, exception) -> {
+                            if (exception instanceof BadCredentialsException || exception instanceof AccountStatusException) {
+                                loginThrottle.recordFailure(request.getParameter("username"), request.getRemoteAddr());
+                            }
+                            exceptionResolver.resolveException(request, response, null, exception);
+                        })
                         .permitAll())
                 .logout(logout -> logout
                         .logoutUrl("/api/auth/logout")
@@ -82,13 +92,16 @@ public class SecurityConfig {
                                 exceptionResolver.resolveException(request, response, null, exception)))
                 .requestCache(RequestCacheConfigurer::disable)
                 .addFilterAfter(new CurrentUserRefreshFilter(authenticatedUserService), SecurityContextHolderFilter.class)
-                .addFilterAfter(new MaintenanceModeFilter(maintenanceService, exceptionResolver), CurrentUserRefreshFilter.class);
+                .addFilterAfter(new MaintenanceModeFilter(maintenanceService, exceptionResolver), CurrentUserRefreshFilter.class)
+                .addFilterBefore(new LoginThrottleFilter(loginThrottle, exceptionResolver),
+                        UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
     private static AuthenticationSuccessHandler loginSuccessHandler(AuthService authService,
                                                                     MaintenanceService maintenanceService,
+                                                                    LoginThrottle loginThrottle,
                                                                     JsonMapper jsonMapper,
                                                                     HandlerExceptionResolver exceptionResolver) {
         return (request, response, authentication) -> {
@@ -106,6 +119,7 @@ public class SecurityConfig {
                 return;
             }
 
+            loginThrottle.recordSuccess(user.getUsername());
             authService.recordSuccessfulLogin(user.getId());
 
             // The CSRF token is replaced on login; reading it issues the new XSRF-TOKEN cookie.
