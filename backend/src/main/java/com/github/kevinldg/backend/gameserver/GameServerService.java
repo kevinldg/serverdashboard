@@ -3,6 +3,7 @@ package com.github.kevinldg.backend.gameserver;
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
 import com.github.kevinldg.backend.common.ApiException;
 import com.github.kevinldg.backend.gameserver.GameServerStatus.Source;
+import com.github.kevinldg.backend.gameserver.profile.ContainerTemplate;
 import com.github.kevinldg.backend.gameserver.profile.GameServerProfile;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -48,6 +49,21 @@ public class GameServerService {
 
     /** The data detection is based on. */
     public record ContainerRef(String name, String image, Map<String, String> labels) {
+    }
+
+    /** A container template together with the profile it belongs to. */
+    public record TemplateInfo(String profileId, String profileName, ContainerTemplate template) {
+    }
+
+    public List<TemplateInfo> listTemplates() {
+        return profiles.stream()
+                .flatMap(profile -> profile.templates().stream()
+                        .map(template -> new TemplateInfo(profile.id(), profile.displayName(), template)))
+                .toList();
+    }
+
+    public Optional<TemplateInfo> findTemplate(String templateId) {
+        return listTemplates().stream().filter(info -> info.template().id().equals(templateId)).findFirst();
     }
 
     public List<GameServerProfileInfo> listProfiles() {

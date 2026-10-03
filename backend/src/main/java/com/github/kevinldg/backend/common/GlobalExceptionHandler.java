@@ -39,6 +39,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(ApiException.class)
     public ProblemDetail handleApiException(ApiException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(ex.getStatus(), ex.getMessage());
+        if (!ex.getFieldErrors().isEmpty()) {
+            problem.setProperty("errors", new LinkedHashMap<>(ex.getFieldErrors()));
+        }
         if (ex.getCause() != null) {
             log.warn("{}: {}", ex.getMessage(), ex.getCause().toString());
             addTechnicalDetailsForAdmins(problem, ex.getCause());

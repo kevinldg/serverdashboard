@@ -10,6 +10,7 @@ import {AnnouncementsPage} from "./pages/admin/AnnouncementsPage";
 import {RolesPage} from "./pages/admin/RolesPage";
 import {UsersPage} from "./pages/admin/UsersPage";
 import {ContainerDetailsPage} from "./pages/ContainerDetailsPage";
+import {CreateContainerPage} from "./pages/create/CreateContainerPage";
 import {DashboardPage} from "./pages/DashboardPage";
 import {LoginPage} from "./pages/LoginPage";
 import {MaintenancePage} from "./pages/MaintenancePage";
@@ -39,6 +40,7 @@ export default function App() {
             <Route element={<RequireAuth/>}>
                 <Route element={<AppLayout/>}>
                     <Route index element={<DashboardPage/>}/>
+                    <Route path="containers/new" element={<RequirePermission permission="CONTAINER_CREATE"><CreateContainerPage/></RequirePermission>}/>
                     <Route path="containers/:id" element={<ContainerDetailsPage/>}/>
                     <Route path="account" element={<AccountPage/>}/>
                     <Route path="admin" element={<AdminLayout/>}>

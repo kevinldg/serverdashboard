@@ -5,6 +5,7 @@ import { getContainerOverview } from "../api/containers";
 import { hasPermission } from "../auth/permissions";
 import { useAuth } from "../auth/useAuth";
 import { Alert } from "../components/Alert";
+import { buttonStyles } from "../components/buttonStyles";
 import { AnnouncementList } from "../components/AnnouncementList";
 import { ContainerActions } from "../components/ContainerActions";
 import { ErrorAlert } from "../components/ErrorAlert";
@@ -31,14 +32,21 @@ export function DashboardPage() {
         <div className="flex flex-col gap-6">
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
-                <RefreshButton
-                    onRefresh={() => {
-                        void reload();
-                        void announcements.reload();
-                    }}
-                    loading={loading || announcements.loading}
-                    lastUpdated={lastUpdated}
-                />
+                <div className="flex items-center gap-3">
+                    <RefreshButton
+                        onRefresh={() => {
+                            void reload();
+                            void announcements.reload();
+                        }}
+                        loading={loading || announcements.loading}
+                        lastUpdated={lastUpdated}
+                    />
+                    {hasPermission(user, "CONTAINER_CREATE") && (
+                        <Link to="/containers/new" className={buttonStyles.primary}>
+                            Create container
+                        </Link>
+                    )}
+                </div>
             </div>
 
             {announcements.data && <AnnouncementList announcements={announcements.data} />}

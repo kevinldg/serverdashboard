@@ -66,6 +66,25 @@ Decisions that complement `requirements.md`. Update this file when a decision ch
   `GAME_SERVER` (with optional profile), or `NOT_GAME_SERVER`. `GET /api/game-server-profiles` lists the profiles.
 - Deleting a container through the application also removes its manual classification.
 
+## Container Creation
+
+- `GET /api/containers/creation-options`, `POST /api/containers` (202 with a job), `GET /api/container-jobs/{id}` and
+  `GET /api/container-jobs/{id}/events` (Server-Sent Events); all require `CONTAINER_CREATE` (Admin only by default).
+- Supported options: name, image with tag, ports (TCP/UDP), named volumes and bind mounts, environment variables,
+  restart policy, network, optional memory limit, start after creation. New options are added as new request fields.
+- Not supported on purpose: privileged mode, capabilities, host network, devices, PID/IPC namespaces.
+- Bind mounts are only allowed strictly below `app.containers.bind-mount-root` (`BIND_MOUNT_ROOT`); without it they are
+  disabled. Paths are handled with Linux semantics regardless of the backend's OS; `..` and the Docker socket are rejected.
+  Symlinks on the host are not resolved (the backend cannot inspect the host file system).
+- Name and published-port conflicts are checked before creating; conflicts with stopped containers or other programs
+  only show up when starting (the container is then kept with status "created").
+- Jobs (in memory, kept 1 hour after finishing): pull the image if missing (progress in percent), create, start.
+  Only the creator and administrators can see a job; Docker's error text is only shown to administrators.
+- Every created container gets the label `serverdashboard.created-by`; containers from a template additionally get
+  `serverdashboard.gameserver=<profile>`.
+- Templates belong to game server profiles (Minecraft Java, Minecraft Bedrock, Satisfactory); values were verified against
+  the images' documentation. Templates that require a EULA (Minecraft) need explicit acceptance (`EULA=TRUE`).
+
 ## Configuration & Secrets
 
 - Secrets are provided via environment variables.

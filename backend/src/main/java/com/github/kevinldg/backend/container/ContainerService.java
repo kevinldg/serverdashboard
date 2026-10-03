@@ -3,9 +3,6 @@ package com.github.kevinldg.backend.container;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.command.InspectContainerResponse;
-import com.github.dockerjava.api.exception.ConflictException;
-import com.github.dockerjava.api.exception.DockerException;
-import com.github.dockerjava.api.exception.NotFoundException;
 import com.github.dockerjava.api.exception.NotModifiedException;
 import com.github.dockerjava.api.model.Container;
 import com.github.dockerjava.api.model.ContainerConfig;
@@ -25,6 +22,7 @@ import com.github.kevinldg.backend.container.ContainerDetailsResponse.RestartPol
 import com.github.kevinldg.backend.container.ContainerLogsResponse.LogLine;
 import com.github.kevinldg.backend.container.ContainerOverviewResponse.ContainerSummary;
 import com.github.kevinldg.backend.container.ContainerOverviewResponse.Statistics;
+import com.github.kevinldg.backend.docker.DockerCalls;
 import com.github.kevinldg.backend.docker.DockerProperties;
 import com.github.kevinldg.backend.gameserver.ClassificationRequest;
 import com.github.kevinldg.backend.gameserver.GameServerService.ContainerRef;
@@ -250,31 +248,8 @@ public class ContainerService {
     }
 
     private <T> T callDocker(Supplier<T> call) {
-        try {
-            return call.get();
-        } catch (ApiException e) {
-            throw e;
-        } catch (NotFoundException e) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "The container does not exist (anymore).", e);
-        } catch (ConflictException e) {
-            throw new ApiException(HttpStatus.CONFLICT, "The container's current state does not allow this action.", e);
-        } catch (DockerException e) {
-            throw new ApiException(HttpStatus.BAD_GATEWAY, "The Docker operation failed.", e);
-        } catch (RuntimeException e) {
-            if (hasCause(e, IOException.class)) {
-                throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "The Docker host is currently unavailable.", e);
-            }
-            throw e;
-        }
-    }
-
-    private static boolean hasCause(Throwable throwable, Class<? extends Throwable> type) {
-        for (Throwable current = throwable; current != null; current = current.getCause()) {
-            if (type.isInstance(current)) {
-                return true;
-            }
-        }
-        return false;
+        return DockerCalls.call(call, "The container does not exist (anymore).",
+                "The container's current state does not allow this action.");
     }
 
     private static String nameOf(Container container) {
