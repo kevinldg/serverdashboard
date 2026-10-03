@@ -1,7 +1,9 @@
 package com.github.kevinldg.backend.container;
 
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
+import com.github.kevinldg.backend.gameserver.ClassificationRequest;
 import com.github.kevinldg.backend.role.Permission;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
@@ -14,6 +16,8 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -88,6 +92,16 @@ public class ContainerController {
     public ResponseEntity<Void> forceStop(@PathVariable @Pattern(regexp = CONTAINER_ID_PATTERN) String id,
                                           @AuthenticationPrincipal AuthenticatedUser user) {
         containerService.forceStop(id, user.getUsername());
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Manual game server classification; mode AUTOMATIC removes it. */
+    @PutMapping("/{id}/classification")
+    @PreAuthorize("hasAuthority('GAMESERVER_MANAGE')")
+    public ResponseEntity<Void> classify(@PathVariable @Pattern(regexp = CONTAINER_ID_PATTERN) String id,
+                                         @Valid @RequestBody ClassificationRequest request,
+                                         @AuthenticationPrincipal AuthenticatedUser user) {
+        containerService.classify(id, request, user);
         return ResponseEntity.noContent().build();
     }
 

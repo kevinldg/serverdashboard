@@ -49,6 +49,23 @@ Decisions that complement `requirements.md`. Update this file when a decision ch
 - Destructive actions are tested against a local Docker daemon (e.g. the development sandbox), never against
   the production containers.
 
+## Game Servers
+
+- Profiles are Java classes implementing `GameServerProfile` (ID, name, image names). A new game = a new `@Component`.
+  Current profiles: `minecraft-java` (`itzg/minecraft-server`), `minecraft-bedrock` (`itzg/minecraft-bedrock-server`),
+  `satisfactory` (`wolveix/satisfactory-server`). "Generic game server" is available for games without a profile.
+- Detection priority:
+  1. Manual classification (collection `container_classifications`, keyed by **container name**, so it survives
+     recreating the container; renaming loses it).
+  2. Docker label `serverdashboard.gameserver`: a profile ID, `generic`/`true`/`yes`, or `none`/`false`/`no`.
+     Unknown values count as a generic game server.
+  3. Image name (registry, tag, and digest are ignored).
+  4. Otherwise: not a game server. Ports are deliberately not used (too many false positives).
+- Every result includes its source (manual, label, image, none).
+- `PUT /api/containers/{id}/classification` (`GAMESERVER_MANAGE`): mode `AUTOMATIC` (removes the manual classification),
+  `GAME_SERVER` (with optional profile), or `NOT_GAME_SERVER`. `GET /api/game-server-profiles` lists the profiles.
+- Deleting a container through the application also removes its manual classification.
+
 ## Configuration & Secrets
 
 - Secrets are provided via environment variables.

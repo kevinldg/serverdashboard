@@ -3,6 +3,26 @@ import { apiClient } from "./client";
 /** Docker container state, e.g. "running", "exited", "paused", "restarting", "created", "dead". */
 export type ContainerState = string;
 
+/** Why a container is (or is not) considered a game server. */
+export type GameServerSource = "MANUAL" | "LABEL" | "IMAGE" | "NONE";
+
+export interface GameServerStatus {
+    gameServer: boolean;
+    /** Null for generic game servers and non-game-servers. */
+    profileId: string | null;
+    /** Profile name, "Game server" for generic ones, null if not a game server. */
+    profileName: string | null;
+    source: GameServerSource;
+}
+
+export interface GameServerProfile {
+    id: string;
+    name: string;
+    imageNames: string[];
+}
+
+export type ClassificationMode = "AUTOMATIC" | "GAME_SERVER" | "NOT_GAME_SERVER";
+
 export interface ContainerSummary {
     id: string;
     name: string;
@@ -11,10 +31,11 @@ export interface ContainerSummary {
     /** Human-readable status from Docker, e.g. "Up 3 months (healthy)". */
     status: string;
     createdAt: string | null;
+    gameServer: GameServerStatus;
 }
 
 export interface ContainerOverview {
-    statistics: { total: number; running: number; stopped: number };
+    statistics: { total: number; running: number; stopped: number; gameServers: number };
     containers: ContainerSummary[];
 }
 
@@ -55,6 +76,10 @@ export interface ContainerDetails {
         networks: string[];
         labels: Record<string, string>;
     };
+    /** Effective status, including a manual classification. */
+    gameServer: GameServerStatus;
+    /** What automatic detection would result in. */
+    detectedGameServer: GameServerStatus;
 }
 
 export interface LogLine {
@@ -144,4 +169,17 @@ export function openLogStream(id: string, handlers: LogStreamHandlers): () => vo
         handlers.onError();
     };
     return () => source.close();
+}
+
+/**
+ * Sets the manual game server classification (stored by container name).
+ * AUTOMATIC removes it; profileId null with GAME_SERVER means a generic game server.
+ */
+export async function classifyContainer(id: string, mode: ClassificationMode, profileId: string | null): Promise<void> {
+    await apiClient.put(`/containers/${encodeURIComponent(id)}/classification`, { mode, profileId });
+}
+
+export async function listGameServerProfiles(): Promise<GameServerProfile[]> {
+    const response = await apiClient.get<GameServerProfile[]>("/game-server-profiles");
+    return response.data;
 }

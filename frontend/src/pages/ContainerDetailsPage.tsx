@@ -13,6 +13,7 @@ import { hasPermission } from "../auth/permissions";
 import { useAuth } from "../auth/useAuth";
 import { ContainerActions } from "../components/ContainerActions";
 import { ErrorAlert } from "../components/ErrorAlert";
+import { GameServerSection } from "../components/GameServerSection";
 import { RefreshButton } from "../components/RefreshButton";
 import { StateBadge } from "../components/StateBadge";
 import { useApiData } from "../hooks/useApiData";
@@ -64,6 +65,9 @@ function ContainerDetailsView({ id }: { id: string }) {
             {data && lastUpdated && (
                 <>
                     <GeneralSection container={data} loadedAt={lastUpdated} />
+                    <Section title="Game server">
+                        <GameServerSection container={data} onChanged={() => void reload()} />
+                    </Section>
                     <StorageSection container={data} />
                     <ConfigurationSection container={data} />
                 </>

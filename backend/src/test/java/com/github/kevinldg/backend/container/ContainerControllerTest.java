@@ -2,6 +2,7 @@ package com.github.kevinldg.backend.container;
 
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
 import com.github.kevinldg.backend.common.ApiException;
+import com.github.kevinldg.backend.gameserver.ClassificationRequest;
 import com.github.kevinldg.backend.maintenance.MaintenanceSettingsRepository;
 import com.github.kevinldg.backend.role.Permission;
 import com.github.kevinldg.backend.role.Role;
@@ -48,6 +49,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -90,7 +92,7 @@ class ContainerControllerTest {
                 .andExpect(status().isForbidden());
 
         when(containerService.getOverview()).thenReturn(new ContainerOverviewResponse(
-                new ContainerOverviewResponse.Statistics(0, 0, 0), List.of()));
+                new ContainerOverviewResponse.Statistics(0, 0, 0, 0), List.of()));
         mockMvc.perform(get("/api/containers").with(userWith(Permission.DASHBOARD_VIEW)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.statistics.total").value(0));
@@ -151,6 +153,33 @@ class ContainerControllerTest {
         when(logStreamService.openStream(eq("abc"), any())).thenReturn(new SseEmitter());
         mockMvc.perform(get("/api/containers/abc/logs/stream").with(userWith(Permission.CONTAINER_LOGS_VIEW)))
                 .andExpect(request().asyncStarted());
+    }
+
+    @Test
+    void classificationRequiresGameServerPermission() throws Exception {
+        String body = """
+                {"mode": "GAME_SERVER", "profileId": "minecraft-java"}
+                """;
+        Permission[] allOthers = EnumSet.complementOf(EnumSet.of(Permission.GAMESERVER_MANAGE)).toArray(Permission[]::new);
+        mockMvc.perform(put("/api/containers/abc/classification").with(userWith(allOthers)).with(CsrfSupport.xsrf(mockMvc))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isForbidden());
+        verifyNoInteractions(containerService);
+
+        mockMvc.perform(put("/api/containers/abc/classification").with(userWith(Permission.GAMESERVER_MANAGE))
+                        .with(CsrfSupport.xsrf(mockMvc))
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isNoContent());
+        verify(containerService).classify(eq("abc"),
+                eq(new ClassificationRequest(ClassificationRequest.Mode.GAME_SERVER, "minecraft-java")), any());
+    }
+
+    @Test
+    void classificationRequiresMode() throws Exception {
+        mockMvc.perform(put("/api/containers/abc/classification").with(admin()).with(CsrfSupport.xsrf(mockMvc))
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(containerService);
     }
 
     @Test

@@ -1,12 +1,17 @@
 package com.github.kevinldg.backend.container;
 
+import com.github.kevinldg.backend.gameserver.GameServerStatus;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
 /**
- * @param health    health check status ({@code healthy}, {@code unhealthy}, {@code starting}), or null without health check
- * @param startedAt null if the container has never been started
+ * @param health             health check status ({@code healthy}, {@code unhealthy}, {@code starting}),
+ *                           or null without health check
+ * @param startedAt          null if the container has never been started
+ * @param gameServer         effective game server status (including a manual classification)
+ * @param detectedGameServer what automatic detection results in, ignoring a manual classification
  */
 public record ContainerDetailsResponse(
         String id,
@@ -21,7 +26,9 @@ public record ContainerDetailsResponse(
         Integer exitCode,
         Integer restartCount,
         List<MountInfo> mounts,
-        Configuration configuration
+        Configuration configuration,
+        GameServerStatus gameServer,
+        GameServerStatus detectedGameServer
 ) {
 
     /**

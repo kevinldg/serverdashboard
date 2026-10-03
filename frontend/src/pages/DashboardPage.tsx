@@ -8,6 +8,7 @@ import { Alert } from "../components/Alert";
 import { AnnouncementList } from "../components/AnnouncementList";
 import { ContainerActions } from "../components/ContainerActions";
 import { ErrorAlert } from "../components/ErrorAlert";
+import { GameServerBadge } from "../components/GameServerBadge";
 import { RefreshButton } from "../components/RefreshButton";
 import { StateBadge } from "../components/StateBadge";
 import { useApiData } from "../hooks/useApiData";
@@ -18,11 +19,13 @@ export function DashboardPage() {
     const announcements = useApiData(listVisibleAnnouncements);
     const location = useLocation();
     const [actionError, setActionError] = useState<unknown>(null);
+    const [gameServersOnly, setGameServersOnly] = useState(false);
     const canViewDetails = hasPermission(user, "CONTAINER_VIEW");
     const canRunActions = (["CONTAINER_START", "CONTAINER_STOP", "CONTAINER_RESTART"] as const)
         .some((permission) => hasPermission(user, permission));
     // Set by the details page after deleting a container
     const notice = (location.state as { notice?: string } | null)?.notice;
+    const visibleContainers = data?.containers.filter((container) => !gameServersOnly || container.gameServer.gameServer) ?? [];
 
     return (
         <div className="flex flex-col gap-6">
@@ -45,11 +48,17 @@ export function DashboardPage() {
 
             {data && (
                 <>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                         <StatCard label="Total containers" value={data.statistics.total} />
                         <StatCard label="Running" value={data.statistics.running} accent="text-emerald-400" />
                         <StatCard label="Stopped" value={data.statistics.stopped} accent="text-red-400" />
+                        <StatCard label="Game servers" value={data.statistics.gameServers} accent="text-violet-400" />
                     </div>
+
+                    <label className="flex items-center gap-2 self-start text-sm text-slate-300">
+                        <input type="checkbox" checked={gameServersOnly} onChange={(event) => setGameServersOnly(event.target.checked)} />
+                        Game servers only
+                    </label>
 
                     <div className="overflow-x-auto rounded-lg border border-slate-800">
                         <table className="w-full text-left text-sm">
@@ -63,7 +72,7 @@ export function DashboardPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-800">
-                                {data.containers.map((container) => (
+                                {visibleContainers.map((container) => (
                                     <tr key={container.id} className="hover:bg-slate-900/60">
                                         <td className="px-4 py-3 font-medium">
                                             {canViewDetails ? (
@@ -76,6 +85,9 @@ export function DashboardPage() {
                                             ) : (
                                                 container.name
                                             )}
+                                            <span className="ml-2">
+                                                <GameServerBadge status={container.gameServer} />
+                                            </span>
                                         </td>
                                         <td className="px-4 py-3 font-mono text-xs text-slate-300">{container.image}</td>
                                         <td className="px-4 py-3">
@@ -94,10 +106,10 @@ export function DashboardPage() {
                                         )}
                                     </tr>
                                 ))}
-                                {data.containers.length === 0 && (
+                                {visibleContainers.length === 0 && (
                                     <tr>
                                         <td colSpan={canRunActions ? 5 : 4} className="px-4 py-6 text-center text-slate-400">
-                                            No containers found.
+                                            {gameServersOnly ? "No game servers found." : "No containers found."}
                                         </td>
                                     </tr>
                                 )}

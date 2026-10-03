@@ -20,7 +20,11 @@ import com.github.kevinldg.backend.container.ContainerDetailsResponse.Environmen
 import com.github.kevinldg.backend.container.ContainerDetailsResponse.MountInfo;
 import com.github.kevinldg.backend.container.ContainerDetailsResponse.PortMapping;
 import com.github.kevinldg.backend.container.ContainerLogsResponse.LogLine;
+import com.github.kevinldg.backend.auth.AuthenticatedUser;
 import com.github.kevinldg.backend.docker.DockerProperties;
+import com.github.kevinldg.backend.gameserver.ClassificationRequest;
+import com.github.kevinldg.backend.gameserver.GameServerService;
+import com.github.kevinldg.backend.gameserver.GameServerStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -31,6 +35,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -93,15 +100,29 @@ class ContainerServiceTest {
             }
             """;
 
+    private static final GameServerStatus MINECRAFT =
+            new GameServerStatus(true, "minecraft-java", "Minecraft (Java Edition)", GameServerStatus.Source.IMAGE);
+    private static final GameServerStatus NOT_A_GAME_SERVER =
+            new GameServerStatus(false, null, null, GameServerStatus.Source.NONE);
+
     private DockerClient dockerClient;
+    private GameServerService gameServerService;
     private ContainerService containerService;
 
     @BeforeEach
     void setUp() {
         dockerClient = mock(DockerClient.class, RETURNS_DEEP_STUBS);
+        gameServerService = mock(GameServerService.class);
+        when(gameServerService.detectAll(any())).thenAnswer(invocation -> {
+            List<GameServerService.ContainerRef> refs = invocation.getArgument(0);
+            return refs.stream().collect(Collectors.toMap(GameServerService.ContainerRef::name,
+                    ref -> ref.name().contains("minecraft") ? MINECRAFT : NOT_A_GAME_SERVER));
+        });
+        when(gameServerService.detect(any())).thenReturn(MINECRAFT);
+        when(gameServerService.detectAutomatically(any())).thenReturn(MINECRAFT);
         containerService = new ContainerService(dockerClient,
                 new DockerProperties("unix:///var/run/docker.sock", Duration.ofSeconds(5), Duration.ofSeconds(5),
-                        Duration.ofSeconds(60)));
+                        Duration.ofSeconds(60)), gameServerService);
     }
 
     @Test
@@ -116,7 +137,8 @@ class ContainerServiceTest {
                 .containsExactly("A-minecraft", "b-teamspeak", "c-paused");
         assertThat(overview.containers().getFirst().createdAt()).isEqualTo(Instant.ofEpochSecond(1700000001));
         // Paused containers are neither running nor stopped.
-        assertThat(overview.statistics()).isEqualTo(new ContainerOverviewResponse.Statistics(3, 1, 1));
+        assertThat(overview.statistics()).isEqualTo(new ContainerOverviewResponse.Statistics(3, 1, 1, 1));
+        assertThat(overview.containers().getFirst().gameServer()).isEqualTo(MINECRAFT);
     }
 
     @Test
@@ -151,6 +173,10 @@ class ContainerServiceTest {
                 new PortMapping(25575, "tcp", null, null));
         assertThat(configuration.networks()).containsExactly("bridge");
         assertThat(configuration.labels()).containsExactly(entry("a", "1"), entry("b", "2"));
+
+        assertThat(details.gameServer()).isEqualTo(MINECRAFT);
+        verify(gameServerService).detect(new GameServerService.ContainerRef("minecraft-server01",
+                "itzg/minecraft-server:java25", Map.of("a", "1", "b", "2")));
     }
 
     @Test
@@ -290,6 +316,17 @@ class ContainerServiceTest {
     }
 
     @Test
+    void classificationIsStoredByContainerName() throws Exception {
+        stubState("abc123", "running");
+        ClassificationRequest request = new ClassificationRequest(ClassificationRequest.Mode.NOT_GAME_SERVER, null);
+        AuthenticatedUser actor = new AuthenticatedUser("u", "kevin", null, true, true, 0, Set.of());
+
+        containerService.classify("abc123", request, actor);
+
+        verify(gameServerService).classify("abc123-name", request, actor);
+    }
+
+    @Test
     void deleteRemovesStoppedContainerButKeepsVolumes() throws Exception {
         stubState("abc123", "exited");
         RemoveContainerCmd removeCommand = mock(RemoveContainerCmd.class, RETURNS_SELF);
@@ -300,6 +337,7 @@ class ContainerServiceTest {
         verify(removeCommand).withRemoveVolumes(false);
         verify(removeCommand).withForce(false);
         verify(removeCommand).exec();
+        verify(gameServerService).removeClassification("abc123-name");
     }
 
     @Test
@@ -325,8 +363,8 @@ class ContainerServiceTest {
 
     private void stubState(String containerId, String state) throws IOException {
         InspectContainerResponse response = DOCKER_JSON.readValue("""
-                {"Id": "%s", "State": {"Status": "%s"}}
-                """.formatted(containerId, state), InspectContainerResponse.class);
+                {"Id": "%s", "Name": "/%s-name", "State": {"Status": "%s"}}
+                """.formatted(containerId, containerId, state), InspectContainerResponse.class);
         when(dockerClient.inspectContainerCmd(containerId).exec()).thenReturn(response);
     }
 

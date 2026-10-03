@@ -15,6 +15,7 @@ import com.github.dockerjava.api.model.HostConfig;
 import com.github.dockerjava.api.model.NetworkSettings;
 import com.github.dockerjava.api.model.Ports;
 import com.github.dockerjava.api.model.RestartPolicy;
+import com.github.kevinldg.backend.auth.AuthenticatedUser;
 import com.github.kevinldg.backend.common.ApiException;
 import com.github.kevinldg.backend.container.ContainerDetailsResponse.Configuration;
 import com.github.kevinldg.backend.container.ContainerDetailsResponse.EnvironmentVariable;
@@ -25,6 +26,10 @@ import com.github.kevinldg.backend.container.ContainerLogsResponse.LogLine;
 import com.github.kevinldg.backend.container.ContainerOverviewResponse.ContainerSummary;
 import com.github.kevinldg.backend.container.ContainerOverviewResponse.Statistics;
 import com.github.kevinldg.backend.docker.DockerProperties;
+import com.github.kevinldg.backend.gameserver.ClassificationRequest;
+import com.github.kevinldg.backend.gameserver.GameServerService.ContainerRef;
+import com.github.kevinldg.backend.gameserver.GameServerService;
+import com.github.kevinldg.backend.gameserver.GameServerStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -60,19 +65,25 @@ public class ContainerService {
 
     private final DockerClient dockerClient;
     private final DockerProperties dockerProperties;
+    private final GameServerService gameServerService;
 
     public ContainerOverviewResponse getOverview() {
         List<Container> containers = callDocker(() -> dockerClient.listContainersCmd().withShowAll(true).exec());
 
+        Map<String, GameServerStatus> gameServers = gameServerService.detectAll(containers.stream()
+                .map(container -> new ContainerRef(nameOf(container), container.getImage(), container.getLabels()))
+                .toList());
+
         List<ContainerSummary> summaries = containers.stream()
-                .map(this::toSummary)
+                .map(container -> toSummary(container, gameServers.get(nameOf(container))))
                 .sorted(Comparator.comparing(ContainerSummary::name, String.CASE_INSENSITIVE_ORDER))
                 .toList();
 
         int running = (int) summaries.stream().filter(c -> "running".equals(c.state())).count();
         int stopped = (int) summaries.stream().filter(c -> STOPPED_STATES.contains(c.state())).count();
+        int gameServerCount = (int) summaries.stream().filter(c -> c.gameServer().gameServer()).count();
 
-        return new ContainerOverviewResponse(new Statistics(summaries.size(), running, stopped), summaries);
+        return new ContainerOverviewResponse(new Statistics(summaries.size(), running, stopped, gameServerCount), summaries);
     }
 
     /**
@@ -82,6 +93,8 @@ public class ContainerService {
         InspectContainerResponse container = callDocker(() -> dockerClient.inspectContainerCmd(containerId).exec());
         InspectContainerResponse.ContainerState state = container.getState();
         ContainerConfig config = container.getConfig();
+        ContainerRef gameServerRef = new ContainerRef(stripLeadingSlash(container.getName()),
+                config != null ? config.getImage() : null, config != null ? config.getLabels() : null);
 
         return new ContainerDetailsResponse(
                 container.getId(),
@@ -103,7 +116,9 @@ public class ContainerService {
                         toPorts(container.getNetworkSettings()),
                         toNetworks(container.getNetworkSettings()),
                         config != null && config.getLabels() != null ? new TreeMap<>(config.getLabels()) : Map.of()
-                )
+                ),
+                gameServerService.detect(gameServerRef),
+                gameServerService.detectAutomatically(gameServerRef)
         );
     }
 
@@ -160,20 +175,34 @@ public class ContainerService {
      * Deletes a stopped container. Volumes are never removed, so persistent data is kept.
      */
     public void delete(String containerId, String actor) {
-        if (!STOPPED_STATES.contains(getState(containerId))) {
+        InspectContainerResponse container = inspect(containerId);
+        if (!STOPPED_STATES.contains(container.getState() != null ? container.getState().getStatus() : null)) {
             throw new ApiException(HttpStatus.CONFLICT, "Stop the container before deleting it.");
         }
         runDockerAction(() -> dockerClient.removeContainerCmd(containerId)
                 .withRemoveVolumes(false)
                 .withForce(false)
                 .exec());
+        gameServerService.removeClassification(stripLeadingSlash(container.getName()));
         log.info("User '{}' deleted container '{}' (volumes kept)", actor, containerId);
+    }
+
+    /**
+     * Sets or removes the manual game server classification. It is stored by container name, so it survives
+     * recreating the container.
+     */
+    public void classify(String containerId, ClassificationRequest request, AuthenticatedUser actor) {
+        gameServerService.classify(stripLeadingSlash(inspect(containerId).getName()), request, actor);
     }
 
     /** Current Docker state of the container, e.g. "running"; 404 if it does not exist. */
     String getState(String containerId) {
-        InspectContainerResponse container = callDocker(() -> dockerClient.inspectContainerCmd(containerId).exec());
+        InspectContainerResponse container = inspect(containerId);
         return container.getState() != null ? container.getState().getStatus() : null;
+    }
+
+    private InspectContainerResponse inspect(String containerId) {
+        return callDocker(() -> dockerClient.inspectContainerCmd(containerId).exec());
     }
 
     private int stopTimeoutSeconds() {
@@ -248,13 +277,16 @@ public class ContainerService {
         return false;
     }
 
-    private ContainerSummary toSummary(Container container) {
-        String name = container.getNames() != null && container.getNames().length > 0
+    private static String nameOf(Container container) {
+        return container.getNames() != null && container.getNames().length > 0
                 ? stripLeadingSlash(container.getNames()[0])
                 : container.getId();
+    }
+
+    private static ContainerSummary toSummary(Container container, GameServerStatus gameServer) {
         Instant createdAt = container.getCreated() != null ? Instant.ofEpochSecond(container.getCreated()) : null;
-        return new ContainerSummary(container.getId(), name, container.getImage(), container.getState(),
-                container.getStatus(), createdAt);
+        return new ContainerSummary(container.getId(), nameOf(container), container.getImage(), container.getState(),
+                container.getStatus(), createdAt, gameServer);
     }
 
     private static List<MountInfo> toMounts(List<InspectContainerResponse.Mount> mounts) {
