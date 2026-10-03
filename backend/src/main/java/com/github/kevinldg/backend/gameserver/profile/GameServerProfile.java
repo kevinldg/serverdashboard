@@ -6,8 +6,8 @@ import java.util.Set;
 /**
  * A known game server type.
  * <p>
- * Profiles detect their game servers by image name and provide container templates. A later phase extends them
- * with configuration files. To support a new game, add a new {@code @Component} implementing this interface.
+ * Profiles detect their game servers by image name and provide container templates and the locations of
+ * configuration files. To support a new game, add a new {@code @Component} implementing this interface.
  */
 public interface GameServerProfile {
 
@@ -21,6 +21,16 @@ public interface GameServerProfile {
      * e.g. {@code itzg/minecraft-server}.
      */
     Set<String> imageNames();
+
+    /** Directories inside the container where the file browser starts; empty means the container's mounts. */
+    default List<String> configRoots() {
+        return List.of();
+    }
+
+    /** Relevant configuration files, offered for direct access if they exist. Must be below a config root. */
+    default List<String> knownConfigFiles() {
+        return List.of();
+    }
 
     /** Templates for creating containers of this game; IDs must be unique across all profiles. */
     default List<ContainerTemplate> templates() {

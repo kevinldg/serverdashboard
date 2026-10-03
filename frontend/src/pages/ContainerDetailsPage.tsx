@@ -11,6 +11,7 @@ import {
 } from "../api/containers";
 import { hasPermission } from "../auth/permissions";
 import { useAuth } from "../auth/useAuth";
+import { ConfigFilesSection } from "../components/ConfigFilesSection";
 import { ContainerActions } from "../components/ContainerActions";
 import { ErrorAlert } from "../components/ErrorAlert";
 import { GameServerSection } from "../components/GameServerSection";
@@ -68,6 +69,11 @@ function ContainerDetailsView({ id }: { id: string }) {
                     <Section title="Game server">
                         <GameServerSection container={data} onChanged={() => void reload()} />
                     </Section>
+                    {data.gameServer.gameServer && hasPermission(user, "GAMESERVER_CONFIG_VIEW") && (
+                        <Section title="Configuration files">
+                            <ConfigFilesSection containerId={data.id} />
+                        </Section>
+                    )}
                     <StorageSection container={data} />
                     <ConfigurationSection container={data} />
                 </>

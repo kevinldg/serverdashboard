@@ -23,6 +23,16 @@ public class MinecraftBedrockProfile implements GameServerProfile {
         return Set.of("itzg/minecraft-bedrock-server");
     }
 
+    @Override
+    public List<String> configRoots() {
+        return List.of("/data");
+    }
+
+    @Override
+    public List<String> knownConfigFiles() {
+        return List.of("/data/server.properties", "/data/allowlist.json", "/data/permissions.json");
+    }
+
     /** Values verified against the itzg/minecraft-bedrock-server documentation. */
     @Override
     public List<ContainerTemplate> templates() {

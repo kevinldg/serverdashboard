@@ -23,6 +23,12 @@ public class SatisfactoryProfile implements GameServerProfile {
         return Set.of("wolveix/satisfactory-server");
     }
 
+    /** The exact .ini paths are only known after the first installation, so there are no known files yet. */
+    @Override
+    public List<String> configRoots() {
+        return List.of("/config");
+    }
+
     /** Values verified against the wolveix/satisfactory-server documentation. */
     @Override
     public List<ContainerTemplate> templates() {

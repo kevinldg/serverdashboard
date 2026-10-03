@@ -1,4 +1,6 @@
-package com.github.kevinldg.backend.container.creation;
+package com.github.kevinldg.backend.common;
+
+import com.github.kevinldg.backend.container.creation.ContainerCreationProperties;
 
 import org.junit.jupiter.api.Test;
 
@@ -20,6 +22,13 @@ class PosixPathsTest {
         assertThat(PosixPaths.normalizeAbsolute("/srv/gameservers/../../etc")).isEmpty();
         assertThat(PosixPaths.normalizeAbsolute("C:\\data")).isEmpty();
         assertThat(PosixPaths.normalizeAbsolute(null)).isEmpty();
+    }
+
+    @Test
+    void parentAndFileName() {
+        assertThat(PosixPaths.parent("/data/server.properties")).isEqualTo("/data");
+        assertThat(PosixPaths.parent("/data")).isEqualTo("/");
+        assertThat(PosixPaths.fileName("/data/config/paper-global.yml")).isEqualTo("paper-global.yml");
     }
 
     @Test

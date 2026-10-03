@@ -1,3 +1,4 @@
+import {lazy, Suspense} from "react";
 import {Navigate, Route, Routes} from "react-router-dom";
 import {useAuth} from "./auth/useAuth";
 import {useMaintenance} from "./maintenance/useMaintenance";
@@ -11,10 +12,14 @@ import {RolesPage} from "./pages/admin/RolesPage";
 import {UsersPage} from "./pages/admin/UsersPage";
 import {ContainerDetailsPage} from "./pages/ContainerDetailsPage";
 import {CreateContainerPage} from "./pages/create/CreateContainerPage";
+import {FileBrowserPage} from "./pages/configfiles/FileBrowserPage";
 import {DashboardPage} from "./pages/DashboardPage";
 import {LoginPage} from "./pages/LoginPage";
 import {MaintenancePage} from "./pages/MaintenancePage";
 import {MaintenanceSettingsPage} from "./pages/admin/MaintenanceSettingsPage";
+
+// Monaco is large; it is only loaded when a file is opened.
+const ConfigFileEditorPage = lazy(() => import("./pages/configfiles/ConfigFileEditorPage"));
 
 export default function App() {
     const {user, loading} = useAuth();
@@ -42,6 +47,12 @@ export default function App() {
                     <Route index element={<DashboardPage/>}/>
                     <Route path="containers/new" element={<RequirePermission permission="CONTAINER_CREATE"><CreateContainerPage/></RequirePermission>}/>
                     <Route path="containers/:id" element={<ContainerDetailsPage/>}/>
+                    <Route path="containers/:id/files" element={<RequirePermission permission="GAMESERVER_CONFIG_VIEW"><FileBrowserPage/></RequirePermission>}/>
+                    <Route path="containers/:id/files/edit" element={
+                        <RequirePermission permission="GAMESERVER_CONFIG_VIEW">
+                            <Suspense fallback={<p className="text-slate-400">Loading editor…</p>}><ConfigFileEditorPage/></Suspense>
+                        </RequirePermission>
+                    }/>
                     <Route path="account" element={<AccountPage/>}/>
                     <Route path="admin" element={<AdminLayout/>}>
                         <Route path="users" element={<RequirePermission permission="USER_MANAGE"><UsersPage/></RequirePermission>}/>

@@ -85,6 +85,25 @@ Decisions that complement `requirements.md`. Update this file when a decision ch
 - Templates belong to game server profiles (Minecraft Java, Minecraft Bedrock, Satisfactory); values were verified against
   the images' documentation. Templates that require a EULA (Minecraft) need explicit acceptance (`EULA=TRUE`).
 
+## Configuration Files
+
+- Endpoints under `/api/containers/{id}/config-files`: overview, `directory?path=`, `content?path=`, `backup?path=`
+  (`GAMESERVER_CONFIG_VIEW`) and `PUT content` (`GAMESERVER_CONFIG_EDIT`). Only for game servers.
+- Accessible paths: below the profile's config roots (Minecraft `/data`, Satisfactory `/config`); for generic game
+  servers below the container's mounts. `..` is rejected; symlinks are listed but never followed.
+- Known files per profile are offered directly if they exist (Minecraft: `server.properties`, `ops.json`, whitelist,
+  ban lists, Paper/Spigot configs). Satisfactory has none yet; its `.ini` paths are only known after a real installation.
+- Reading and writing single files uses Docker's archive API (also works for stopped containers). Listing a directory
+  runs `find`/`stat` inside the container (no shell) and therefore requires a running container.
+- Editable: regular UTF-8 text files without NUL bytes, up to 1 MB, with the extensions
+  `.properties .json .yml .yaml .toml .txt .cfg .conf .ini .xml .env .sh`.
+- Saving keeps owner, group, and permissions (game servers often run as UID 1000), requires the hash of the loaded
+  version (409 if the file changed meanwhile), and stores the previous content in MongoDB (`config_file_backups`,
+  one version per file, keyed by container name and path). Backups may contain passwords from the files.
+- Minecraft: unless `OVERRIDE_SERVER_PROPERTIES=false`, properties also set as environment variables are overwritten on
+  every start; the editor shows a hint.
+- The frontend loads Monaco (bundled, no CDN, only the needed languages) lazily when a file is opened.
+
 ## Configuration & Secrets
 
 - Secrets are provided via environment variables.

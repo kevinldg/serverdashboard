@@ -29,6 +29,8 @@
     <properties>
         <java.version>25</java.version>
         <docker-java.version>3.7.1</docker-java.version>
+        <!-- Same version as brought in by docker-java; used directly for reading and writing tar archives -->
+        <commons-compress.version>1.28.0</commons-compress.version>
     </properties>
     <dependencies>
         <dependency>
@@ -56,6 +58,11 @@
             <groupId>com.github.docker-java</groupId>
             <artifactId>docker-java-transport-httpclient5</artifactId>
             <version>${docker-java.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+            <version>${commons-compress.version}</version>
         </dependency>
 
         <dependency>

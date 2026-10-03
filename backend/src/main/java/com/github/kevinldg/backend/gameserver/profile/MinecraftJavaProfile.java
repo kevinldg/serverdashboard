@@ -23,6 +23,18 @@ public class MinecraftJavaProfile implements GameServerProfile {
         return Set.of("itzg/minecraft-server");
     }
 
+    @Override
+    public List<String> configRoots() {
+        return List.of("/data");
+    }
+
+    /** Vanilla files plus Paper/Spigot configuration (only shown if they exist). */
+    @Override
+    public List<String> knownConfigFiles() {
+        return List.of("/data/server.properties", "/data/ops.json", "/data/whitelist.json", "/data/banned-players.json",
+                "/data/banned-ips.json", "/data/bukkit.yml", "/data/spigot.yml", "/data/config/paper-global.yml");
+    }
+
     /** Values verified against the itzg/minecraft-server documentation. */
     @Override
     public List<ContainerTemplate> templates() {

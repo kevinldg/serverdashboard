@@ -184,7 +184,7 @@ public class GameServerService {
                 .orElse(new GameServerStatus(true, null, GENERIC_NAME, source));
     }
 
-    private Optional<GameServerProfile> findProfile(String profileId) {
+    public Optional<GameServerProfile> findProfile(String profileId) {
         return profiles.stream().filter(profile -> profile.id().equals(profileId)).findFirst();
     }
 
