@@ -31,7 +31,7 @@ export function DashboardPage() {
     return (
         <div className="flex flex-col gap-6">
             <div className="flex flex-wrap items-center justify-between gap-4">
-                <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
+                <h1 className="text-2xl font-semibold text-fg-strong">Dashboard</h1>
                 <div className="flex items-center gap-3">
                     <RefreshButton
                         onRefresh={() => {
@@ -58,19 +58,19 @@ export function DashboardPage() {
                 <>
                     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                         <StatCard label="Total containers" value={data.statistics.total} />
-                        <StatCard label="Running" value={data.statistics.running} accent="text-emerald-400" />
-                        <StatCard label="Stopped" value={data.statistics.stopped} accent="text-red-400" />
-                        <StatCard label="Game servers" value={data.statistics.gameServers} accent="text-violet-400" />
+                        <StatCard label="Running" value={data.statistics.running} accent="text-success-fg-vivid" />
+                        <StatCard label="Stopped" value={data.statistics.stopped} accent="text-danger-fg-vivid" />
+                        <StatCard label="Game servers" value={data.statistics.gameServers} accent="text-game-fg-vivid" />
                     </div>
 
-                    <label className="flex items-center gap-2 self-start text-sm text-slate-300">
+                    <label className="flex items-center gap-2 self-start text-sm text-fg-secondary">
                         <input type="checkbox" checked={gameServersOnly} onChange={(event) => setGameServersOnly(event.target.checked)} />
                         Game servers only
                     </label>
 
-                    <div className="overflow-x-auto rounded-lg border border-slate-800">
+                    <div className="overflow-x-auto rounded-lg border border-line">
                         <table className="w-full text-left text-sm">
-                            <thead className="bg-slate-900 text-xs uppercase tracking-wide text-slate-400">
+                            <thead className="bg-surface text-xs uppercase tracking-wide text-fg-muted">
                                 <tr>
                                     <th className="px-4 py-3 font-medium">Name</th>
                                     <th className="px-4 py-3 font-medium">Image</th>
@@ -79,14 +79,14 @@ export function DashboardPage() {
                                     {canRunActions && <th className="px-4 py-3 font-medium">Actions</th>}
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-800">
+                            <tbody className="divide-y divide-line">
                                 {visibleContainers.map((container) => (
-                                    <tr key={container.id} className="hover:bg-slate-900/60">
+                                    <tr key={container.id} className="hover:bg-surface/60">
                                         <td className="px-4 py-3 font-medium">
                                             {canViewDetails ? (
                                                 <Link
                                                     to={`/containers/${container.id}`}
-                                                    className="text-sky-400 hover:text-sky-300 hover:underline"
+                                                    className="text-accent-fg-vivid hover:text-accent-fg hover:underline"
                                                 >
                                                     {container.name}
                                                 </Link>
@@ -97,16 +97,16 @@ export function DashboardPage() {
                                                 <GameServerBadge status={container.gameServer} />
                                             </span>
                                             {container.dashboard && (
-                                                <span className="ml-2 rounded-full bg-sky-950 px-2 py-0.5 text-xs font-medium text-sky-300 ring-1 ring-inset ring-sky-800">
+                                                <span className="ml-2 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent-fg ring-1 ring-inset ring-accent-line">
                                                     this dashboard
                                                 </span>
                                             )}
                                         </td>
-                                        <td className="px-4 py-3 font-mono text-xs text-slate-300">{container.image}</td>
+                                        <td className="px-4 py-3 font-mono text-xs text-fg-secondary">{container.image}</td>
                                         <td className="px-4 py-3">
                                             <StateBadge state={container.state} />
                                         </td>
-                                        <td className="px-4 py-3 text-slate-400">{container.status}</td>
+                                        <td className="px-4 py-3 text-fg-muted">{container.status}</td>
                                         {canRunActions && (
                                             <td className="px-4 py-3">
                                                 <ContainerActions
@@ -121,7 +121,7 @@ export function DashboardPage() {
                                 ))}
                                 {visibleContainers.length === 0 && (
                                     <tr>
-                                        <td colSpan={canRunActions ? 5 : 4} className="px-4 py-6 text-center text-slate-400">
+                                        <td colSpan={canRunActions ? 5 : 4} className="px-4 py-6 text-center text-fg-muted">
                                             {gameServersOnly ? "No game servers found." : "No containers found."}
                                         </td>
                                     </tr>
@@ -132,15 +132,15 @@ export function DashboardPage() {
                 </>
             )}
 
-            {!data && loading && <p className="text-slate-400">Loading containers…</p>}
+            {!data && loading && <p className="text-fg-muted">Loading containers…</p>}
         </div>
     );
 }
 
-function StatCard({ label, value, accent = "text-white" }: { label: string; value: number; accent?: string }) {
+function StatCard({ label, value, accent = "text-fg-strong" }: { label: string; value: number; accent?: string }) {
     return (
-        <div className="rounded-lg border border-slate-800 bg-slate-900 px-5 py-4">
-            <p className="text-sm text-slate-400">{label}</p>
+        <div className="rounded-lg border border-line bg-surface px-5 py-4">
+            <p className="text-sm text-fg-muted">{label}</p>
             <p className={`mt-1 text-3xl font-semibold ${accent}`}>{value}</p>
         </div>
     );

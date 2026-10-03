@@ -3,7 +3,7 @@ import type { CreationOptions, MountType, Protocol, RestartPolicyName } from "..
 import { type ContainerForm, renameContainer } from "./formModel";
 
 const inputClass =
-    "w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-slate-100 outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 aria-invalid:border-red-500";
+    "w-full rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm text-fg outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 aria-invalid:border-red-500";
 
 interface ContainerFormViewProps {
     form: ContainerForm;
@@ -29,7 +29,7 @@ export function ContainerFormView({ form, options, errors, onChange }: Container
     return (
         <div className="flex flex-col gap-6">
             {form.notes.length > 0 && (
-                <ul className="rounded-md border border-amber-800 bg-amber-950/40 px-4 py-3 text-sm text-amber-200">
+                <ul className="rounded-md border border-warning-line bg-warning-soft/40 px-4 py-3 text-sm text-warning-fg-strong">
                     {form.notes.map((note) => (
                         <li key={note}>{note}</li>
                     ))}
@@ -70,7 +70,7 @@ export function ContainerFormView({ form, options, errors, onChange }: Container
                          error={errors[`ports[${index}].hostPort`] ?? errors[`ports[${index}].containerPort`]}>
                         <input className={`${inputClass} w-28`} inputMode="numeric" placeholder="Host" aria-label="Host port"
                                value={port.hostPort} onChange={(event) => updateRow("ports", index, { hostPort: event.target.value })} />
-                        <span className="text-slate-500">→</span>
+                        <span className="text-fg-subtle">→</span>
                         <input className={`${inputClass} w-28`} inputMode="numeric" placeholder="Container" aria-label="Container port"
                                value={port.containerPort} onChange={(event) => updateRow("ports", index, { containerPort: event.target.value })} />
                         <select className={`${inputClass} w-24`} aria-label="Protocol" value={port.protocol}
@@ -104,10 +104,10 @@ export function ContainerFormView({ form, options, errors, onChange }: Container
                         <input className={`${inputClass} font-mono`} aria-label="Source"
                                placeholder={mount.type === "VOLUME" ? "volume name" : `${options.bindMountRoot ?? ""}/…`}
                                value={mount.source} onChange={(event) => updateRow("mounts", index, { source: event.target.value })} />
-                        <span className="text-slate-500">→</span>
+                        <span className="text-fg-subtle">→</span>
                         <input className={`${inputClass} font-mono`} aria-label="Container path" placeholder="/data"
                                value={mount.target} onChange={(event) => updateRow("mounts", index, { target: event.target.value })} />
-                        <label className="flex shrink-0 items-center gap-1 text-xs text-slate-400">
+                        <label className="flex shrink-0 items-center gap-1 text-xs text-fg-muted">
                             <input type="checkbox" checked={mount.readOnly}
                                    onChange={(event) => updateRow("mounts", index, { readOnly: event.target.checked })} />
                             read-only
@@ -127,7 +127,7 @@ export function ContainerFormView({ form, options, errors, onChange }: Container
                          error={errors[`environment[${index}].name`] ?? errors[`environment[${index}].value`]}>
                         <input className={`${inputClass} w-56 font-mono`} aria-label="Name" placeholder="NAME"
                                value={variable.name} onChange={(event) => updateRow("environment", index, { name: event.target.value })} />
-                        <span className="text-slate-500">=</span>
+                        <span className="text-fg-subtle">=</span>
                         {variable.options && variable.options.length > 0 ? (
                             <select className={`${inputClass} font-mono`} aria-label="Value" value={variable.value}
                                     onChange={(event) => updateRow("environment", index, { value: event.target.value })}>
@@ -179,19 +179,19 @@ export function ContainerFormView({ form, options, errors, onChange }: Container
             </FormSection>
 
             {form.requiresEula && (
-                <div className={`rounded-md border px-4 py-3 text-sm ${errors.eula ? "border-red-700 bg-red-950/40" : "border-slate-700 bg-slate-900"}`}>
+                <div className={`rounded-md border px-4 py-3 text-sm ${errors.eula ? "border-danger-line bg-danger-soft/40" : "border-line-strong bg-surface"}`}>
                     <label className="flex items-start gap-2">
                         <input type="checkbox" className="mt-1" checked={form.eulaAccepted}
                                onChange={(event) => update({ eulaAccepted: event.target.checked })} />
                         <span>
                             I accept the{" "}
-                            <a href="https://www.minecraft.net/eula" target="_blank" rel="noreferrer" className="text-sky-400 underline">
+                            <a href="https://www.minecraft.net/eula" target="_blank" rel="noreferrer" className="text-accent-fg-vivid underline">
                                 Minecraft End User License Agreement
                             </a>{" "}
                             (sets <code className="font-mono">EULA=TRUE</code>).
                         </span>
                     </label>
-                    {errors.eula && <p className="mt-1 text-red-400">{errors.eula}</p>}
+                    {errors.eula && <p className="mt-1 text-danger-fg-vivid">{errors.eula}</p>}
                 </div>
             )}
         </div>
@@ -206,14 +206,14 @@ function FormSection({ title, description, children, onAdd, addLabel }: {
     addLabel?: string;
 }) {
     return (
-        <section className="rounded-lg border border-slate-800 bg-slate-900 p-5">
+        <section className="rounded-lg border border-line bg-surface p-5">
             <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
                 <div>
-                    <h2 className="font-semibold text-white">{title}</h2>
-                    {description && <p className="text-xs text-slate-400">{description}</p>}
+                    <h2 className="font-semibold text-fg-strong">{title}</h2>
+                    {description && <p className="text-xs text-fg-muted">{description}</p>}
                 </div>
                 {onAdd && (
-                    <button type="button" onClick={onAdd} className="text-sm text-sky-400 hover:underline">
+                    <button type="button" onClick={onAdd} className="text-sm text-accent-fg-vivid hover:underline">
                         + {addLabel}
                     </button>
                 )}
@@ -226,9 +226,9 @@ function FormSection({ title, description, children, onAdd, addLabel }: {
 function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
     return (
         <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium text-slate-300">{label}</span>
+            <span className="font-medium text-fg-secondary">{label}</span>
             {children}
-            {error && <span className="text-red-400">{error}</span>}
+            {error && <span className="text-danger-fg-vivid">{error}</span>}
         </label>
     );
 }
@@ -243,16 +243,16 @@ function Row({ children, onRemove, description, error }: {
         <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
                 {children}
-                <button type="button" onClick={onRemove} aria-label="Remove" className="shrink-0 px-2 text-slate-500 hover:text-red-400">
+                <button type="button" onClick={onRemove} aria-label="Remove" className="shrink-0 px-2 text-fg-subtle hover:text-danger-fg-vivid">
                     ✕
                 </button>
             </div>
-            {description && <p className="text-xs text-slate-500">{description}</p>}
-            {error && <p className="text-xs text-red-400">{error}</p>}
+            {description && <p className="text-xs text-fg-subtle">{description}</p>}
+            {error && <p className="text-xs text-danger-fg-vivid">{error}</p>}
         </div>
     );
 }
 
 function Empty({ children }: { children: string }) {
-    return <p className="text-sm text-slate-500">{children}</p>;
+    return <p className="text-sm text-fg-subtle">{children}</p>;
 }

@@ -9,7 +9,7 @@ export function ErrorAlert({ error }: { error: unknown }) {
         <Alert variant="error">
             <p>{getErrorMessage(error)}</p>
             {problem?.exception && (
-                <details className="mt-2 text-xs text-red-300">
+                <details className="mt-2 text-xs text-danger-fg">
                     <summary className="cursor-pointer">Technical details</summary>
                     <p className="mt-1 font-mono break-all">
                         {problem.exception}: {problem.exceptionMessage}

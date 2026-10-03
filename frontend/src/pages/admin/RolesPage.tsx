@@ -57,8 +57,8 @@ export function RolesPage() {
         <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-lg font-semibold text-white">Roles & permissions</h2>
-                    <p className="text-sm text-slate-400">Changes apply to users with the role on their next request.</p>
+                    <h2 className="text-lg font-semibold text-fg-strong">Roles & permissions</h2>
+                    <p className="text-sm text-fg-muted">Changes apply to users with the role on their next request.</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <RefreshButton onRefresh={() => void roles.reload()} loading={roles.loading} lastUpdated={roles.lastUpdated} />
@@ -74,9 +74,9 @@ export function RolesPage() {
             {permissions.error !== null && <ErrorAlert error={permissions.error} />}
 
             {roles.data && (
-                <div className="overflow-x-auto rounded-lg border border-slate-800">
+                <div className="overflow-x-auto rounded-lg border border-line">
                     <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-900 text-xs uppercase tracking-wide text-slate-400">
+                        <thead className="bg-surface text-xs uppercase tracking-wide text-fg-muted">
                             <tr>
                                 <th className="px-4 py-3 font-medium">Role</th>
                                 <th className="px-4 py-3 font-medium">Permissions</th>
@@ -84,21 +84,21 @@ export function RolesPage() {
                                 <th className="px-4 py-3 font-medium">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800">
+                        <tbody className="divide-y divide-line">
                             {roles.data.map((role) => (
-                                <tr key={role.id} className="hover:bg-slate-900/60">
+                                <tr key={role.id} className="hover:bg-surface/60">
                                     <td className="px-4 py-3 font-medium">
                                         {role.name}
                                         {role.admin ? (
-                                            <Badge className="bg-sky-950 text-sky-300 ring-sky-800">full access</Badge>
+                                            <Badge className="bg-accent-soft text-accent-fg ring-accent-line">full access</Badge>
                                         ) : role.builtIn ? (
-                                            <Badge className="bg-slate-800 text-slate-300 ring-slate-700">built-in</Badge>
+                                            <Badge className="bg-raised text-fg-secondary ring-line-strong">built-in</Badge>
                                         ) : null}
                                     </td>
-                                    <td className="px-4 py-3 text-slate-300">
+                                    <td className="px-4 py-3 text-fg-secondary">
                                         {role.admin ? "All" : `${role.permissions.length} of ${permissions.data?.length ?? "–"}`}
                                     </td>
-                                    <td className="px-4 py-3 text-slate-300">{role.userCount}</td>
+                                    <td className="px-4 py-3 text-fg-secondary">{role.userCount}</td>
                                     <td className="px-4 py-3">
                                         <div className="flex flex-wrap gap-2">
                                             <RowButton onClick={() => setDialog({ type: "edit", role })}>
@@ -125,7 +125,7 @@ export function RolesPage() {
                     </table>
                 </div>
             )}
-            {!roles.data && roles.loading && <p className="text-slate-400">Loading roles…</p>}
+            {!roles.data && roles.loading && <p className="text-fg-muted">Loading roles…</p>}
 
             {(dialog?.type === "create" || dialog?.type === "edit") && permissions.data && (
                 <RoleEditorModal
@@ -237,13 +237,13 @@ function RoleEditorModal({ role, permissions, currentUser, onSaved, onClose }: R
                     required
                 />
                 {role?.builtIn && !readOnly && (
-                    <p className="-mt-2 text-xs text-slate-400">Built-in roles cannot be renamed, but their permissions can be changed.</p>
+                    <p className="-mt-2 text-xs text-fg-muted">Built-in roles cannot be renamed, but their permissions can be changed.</p>
                 )}
 
                 <div className="flex max-h-[50vh] flex-col gap-4 overflow-y-auto pr-1">
                     {groups.map((group) => (
                         <fieldset key={group}>
-                            <legend className="mb-2 text-sm font-semibold text-slate-200">{PERMISSION_GROUP_LABELS[group]}</legend>
+                            <legend className="mb-2 text-sm font-semibold text-fg">{PERMISSION_GROUP_LABELS[group]}</legend>
                             <div className="flex flex-col gap-2">
                                 {permissions
                                     .filter((info) => info.group === group)
@@ -252,7 +252,7 @@ function RoleEditorModal({ role, permissions, currentUser, onSaved, onClose }: R
                                         return (
                                             <label
                                                 key={info.name}
-                                                className={`flex items-start gap-3 rounded-md px-2 py-1.5 text-sm ${blocked ? "opacity-50" : "hover:bg-slate-800/60"}`}
+                                                className={`flex items-start gap-3 rounded-md px-2 py-1.5 text-sm ${blocked ? "opacity-50" : "hover:bg-raised/60"}`}
                                                 title={blocked ? "You cannot grant a permission you do not have yourself." : undefined}
                                             >
                                                 <input
@@ -263,8 +263,8 @@ function RoleEditorModal({ role, permissions, currentUser, onSaved, onClose }: R
                                                     onChange={() => toggle(info.name)}
                                                 />
                                                 <span>
-                                                    <span className="block text-slate-100">{info.description}</span>
-                                                    <span className="font-mono text-xs text-slate-500">{info.name}</span>
+                                                    <span className="block text-fg">{info.description}</span>
+                                                    <span className="font-mono text-xs text-fg-subtle">{info.name}</span>
                                                 </span>
                                             </label>
                                         );
@@ -275,7 +275,7 @@ function RoleEditorModal({ role, permissions, currentUser, onSaved, onClose }: R
                 </div>
 
                 <div className="mt-2 flex items-center justify-between gap-3">
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-fg-muted">
                         {readOnly ? "All" : selected.size} of {permissions.length} permissions
                     </span>
                     <div className="flex gap-3">

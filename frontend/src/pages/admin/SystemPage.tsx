@@ -13,11 +13,11 @@ export function SystemPage() {
     return (
         <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
-                <h2 className="text-lg font-semibold text-white">System information</h2>
+                <h2 className="text-lg font-semibold text-fg-strong">System information</h2>
                 <RefreshButton onRefresh={() => void system.reload()} loading={system.loading} lastUpdated={system.lastUpdated} />
             </div>
             {system.error !== null && <ErrorAlert error={system.error} />}
-            {!data && system.loading && <p className="text-slate-400">Loading…</p>}
+            {!data && system.loading && <p className="text-fg-muted">Loading…</p>}
 
             {data && system.lastUpdated && (
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -36,9 +36,9 @@ export function SystemPage() {
                         <Item label="Database">{data.database.name}</Item>
                         <Item label="Status">
                             {data.database.reachable ? (
-                                <span className="text-emerald-300">reachable ({data.database.latencyMs} ms)</span>
+                                <span className="text-success-fg">reachable ({data.database.latencyMs} ms)</span>
                             ) : (
-                                <span className="text-red-300">not reachable</span>
+                                <span className="text-danger-fg">not reachable</span>
                             )}
                         </Item>
                     </Card>
@@ -80,8 +80,8 @@ export function SystemPage() {
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
     return (
-        <section className="rounded-lg border border-slate-800 bg-slate-900 p-5">
-            <h3 className="mb-3 font-semibold text-white">{title}</h3>
+        <section className="rounded-lg border border-line bg-surface p-5">
+            <h3 className="mb-3 font-semibold text-fg-strong">{title}</h3>
             <dl className="grid grid-cols-[9rem_1fr] gap-y-2 text-sm">{children}</dl>
         </section>
     );
@@ -90,8 +90,8 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
 function Item({ label, children }: { label: string; children: ReactNode }) {
     return (
         <>
-            <dt className="text-slate-400">{label}</dt>
-            <dd className="text-slate-100 break-words">{children}</dd>
+            <dt className="text-fg-muted">{label}</dt>
+            <dd className="text-fg break-words">{children}</dd>
         </>
     );
 }

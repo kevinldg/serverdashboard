@@ -37,10 +37,10 @@ export function LoginPage() {
     return (
         <div className="flex min-h-screen items-center justify-center px-4">
             <div className="w-full max-w-sm">
-                <h1 className="mb-6 text-center text-2xl font-semibold text-white">ServerDashboard</h1>
+                <h1 className="mb-6 text-center text-2xl font-semibold text-fg-strong">ServerDashboard</h1>
                 <form
                     onSubmit={handleSubmit}
-                    className="flex flex-col gap-4 rounded-lg border border-slate-800 bg-slate-900 p-6"
+                    className="flex flex-col gap-4 rounded-lg border border-line bg-surface p-6"
                 >
                     {maintenance?.enabled && (
                         <Alert variant="info">Maintenance mode is active. Only administrators can log in.</Alert>

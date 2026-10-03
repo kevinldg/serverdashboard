@@ -66,7 +66,7 @@ export function UsersPage() {
     return (
         <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
-                <h2 className="text-lg font-semibold text-white">Users</h2>
+                <h2 className="text-lg font-semibold text-fg-strong">Users</h2>
                 <div className="flex items-center gap-3">
                     <RefreshButton onRefresh={() => void users.reload()} loading={users.loading} lastUpdated={users.lastUpdated} />
                     <button type="button" onClick={() => setDialog({ type: "create" })} className={buttonStyles.primary}>
@@ -80,9 +80,9 @@ export function UsersPage() {
             {users.error !== null && <ErrorAlert error={users.error} />}
 
             {users.data && (
-                <div className="overflow-x-auto rounded-lg border border-slate-800">
+                <div className="overflow-x-auto rounded-lg border border-line">
                     <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-900 text-xs uppercase tracking-wide text-slate-400">
+                        <thead className="bg-surface text-xs uppercase tracking-wide text-fg-muted">
                             <tr>
                                 <th className="px-4 py-3 font-medium">Username</th>
                                 <th className="px-4 py-3 font-medium">Role</th>
@@ -92,34 +92,34 @@ export function UsersPage() {
                                 <th className="px-4 py-3 font-medium">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800">
+                        <tbody className="divide-y divide-line">
                             {users.data.map((user) => (
-                                <tr key={user.id} className="hover:bg-slate-900/60">
+                                <tr key={user.id} className="hover:bg-surface/60">
                                     <td className="px-4 py-3 font-medium">
                                         {user.username}
-                                        {isSelf(user) && <span className="ml-2 text-xs text-slate-400">(you)</span>}
+                                        {isSelf(user) && <span className="ml-2 text-xs text-fg-muted">(you)</span>}
                                     </td>
                                     <td className="px-4 py-3">
-                                        {user.role?.name ?? <span className="text-red-300">missing role</span>}
+                                        {user.role?.name ?? <span className="text-danger-fg">missing role</span>}
                                     </td>
                                     <td className="px-4 py-3">
                                         <span
                                             className={`rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${
                                                 user.active
-                                                    ? "bg-emerald-950 text-emerald-300 ring-emerald-800"
-                                                    : "bg-slate-800 text-slate-300 ring-slate-700"
+                                                    ? "bg-success-soft text-success-fg ring-success-line"
+                                                    : "bg-raised text-fg-secondary ring-line-strong"
                                             }`}
                                         >
                                             {user.active ? "active" : "deactivated"}
                                         </span>
                                         {user.passwordChangeRecommended && (
-                                            <span className="ml-2 text-xs text-amber-300" title="Still using an initial or reset password">
+                                            <span className="ml-2 text-xs text-warning-fg" title="Still using an initial or reset password">
                                                 initial password
                                             </span>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3 text-slate-400">{formatDateTime(user.lastLoginAt)}</td>
-                                    <td className="px-4 py-3 text-slate-400">{formatDateTime(user.createdAt)}</td>
+                                    <td className="px-4 py-3 text-fg-muted">{formatDateTime(user.lastLoginAt)}</td>
+                                    <td className="px-4 py-3 text-fg-muted">{formatDateTime(user.createdAt)}</td>
                                     <td className="px-4 py-3">
                                         {mayManage(user) ? (
                                             <div className="flex flex-wrap gap-2">
@@ -139,7 +139,7 @@ export function UsersPage() {
                                                 </RowButton>
                                             </div>
                                         ) : (
-                                            <span className="text-xs text-slate-500">Only administrators can manage this account.</span>
+                                            <span className="text-xs text-fg-subtle">Only administrators can manage this account.</span>
                                         )}
                                     </td>
                                 </tr>
@@ -148,7 +148,7 @@ export function UsersPage() {
                     </table>
                 </div>
             )}
-            {!users.data && users.loading && <p className="text-slate-400">Loading users…</p>}
+            {!users.data && users.loading && <p className="text-fg-muted">Loading users…</p>}
 
             {(dialog?.type === "create" || dialog?.type === "edit") && (
                 <UserFormModal
@@ -200,7 +200,7 @@ export function UsersPage() {
                     }}
                 >
                     <p>The user will be permanently deleted and logged out immediately. This cannot be undone.</p>
-                    <p className="text-slate-400">To block access temporarily instead, deactivate the user.</p>
+                    <p className="text-fg-muted">To block access temporarily instead, deactivate the user.</p>
                 </ConfirmModal>
             )}
 
@@ -297,7 +297,7 @@ function UserFormModal({ user, isSelf, roles, mayAssignAdmin, onSaved, onClose }
                 />
 
                 <div className="flex flex-col gap-1.5">
-                    <label htmlFor="user-role" className="text-sm font-medium text-slate-300">
+                    <label htmlFor="user-role" className="text-sm font-medium text-fg-secondary">
                         Role
                     </label>
                     <select
@@ -305,7 +305,7 @@ function UserFormModal({ user, isSelf, roles, mayAssignAdmin, onSaved, onClose }
                         value={roleId}
                         onChange={(event) => setRoleId(event.target.value)}
                         disabled={isSelf}
-                        className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 disabled:opacity-60"
+                        className="rounded-md border border-line-strong bg-surface px-3 py-2 text-fg disabled:opacity-60"
                     >
                         {/* Keep the current role selectable even if it is not assignable (e.g. a non-admin viewing it) */}
                         {(isSelf ? roles : assignableRoles).map((role) => (
@@ -315,13 +315,13 @@ function UserFormModal({ user, isSelf, roles, mayAssignAdmin, onSaved, onClose }
                             </option>
                         ))}
                     </select>
-                    {fieldErrors.roleId && <p className="text-sm text-red-400">{fieldErrors.roleId}</p>}
-                    {isSelf && <p className="text-xs text-slate-400">You cannot change your own role.</p>}
+                    {fieldErrors.roleId && <p className="text-sm text-danger-fg-vivid">{fieldErrors.roleId}</p>}
+                    {isSelf && <p className="text-xs text-fg-muted">You cannot change your own role.</p>}
                 </div>
 
                 {isNew ? (
                     <fieldset className="flex flex-col gap-2">
-                        <legend className="mb-1 text-sm font-medium text-slate-300">Password</legend>
+                        <legend className="mb-1 text-sm font-medium text-fg-secondary">Password</legend>
                         <label className="flex items-center gap-2 text-sm">
                             <input type="radio" checked={generatePassword} onChange={() => setGeneratePassword(true)} />
                             Generate a secure password (recommended)
@@ -340,13 +340,13 @@ function UserFormModal({ user, isSelf, roles, mayAssignAdmin, onSaved, onClose }
                                 error={fieldErrors.password}
                             />
                         )}
-                        <p className="text-xs text-slate-400">The user will be asked to change it after the first login.</p>
+                        <p className="text-xs text-fg-muted">The user will be asked to change it after the first login.</p>
                     </fieldset>
                 ) : (
                     <label className="flex items-center gap-2 text-sm">
                         <input type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} disabled={isSelf} />
                         Active
-                        <span className="text-xs text-slate-400">
+                        <span className="text-xs text-fg-muted">
                             {isSelf ? "(you cannot deactivate yourself)" : "– deactivated users cannot log in and are logged out immediately"}
                         </span>
                     </label>

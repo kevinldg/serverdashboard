@@ -201,6 +201,15 @@ Decisions that complement `requirements.md`. Update this file when a decision ch
   so announcements expire without a background job. Status in the management: visible, scheduled, expired, inactive.
 - Times are stored in UTC and entered/shown in the browser's time zone.
 
+## Light and Dark Mode
+
+- Components use theme colors (`bg-surface`, `text-fg-muted`, `border-line`, `bg-danger-soft`, …) defined in
+  `frontend/src/index.css`; each has a light and a dark value via CSS `light-dark()`. Solid colors (buttons, status
+  dots, focus rings) use the Tailwind palette directly. New components should use the theme colors.
+- Without a choice, the operating system's setting applies. The switch in the header saves the choice in the browser
+  (`localStorage`, per device); `public/theme-init.js` applies it before the page renders.
+- The configuration file editor uses Monaco's `vs` / `vs-dark` theme accordingly.
+
 ## Live Updates
 
 - Pages load data once and are refreshed manually (no polling).

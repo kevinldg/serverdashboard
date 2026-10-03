@@ -33,9 +33,9 @@ export function Modal({ title, children, onClose, initialFocusRef, size = "md" }
                 event.preventDefault();
                 onClose();
             }}
-            className={`m-auto w-[calc(100%-2rem)] ${size === "xl" ? "max-w-6xl" : size === "lg" ? "max-w-lg" : "max-w-md"} rounded-lg border border-slate-700 bg-slate-900 p-6 text-slate-100 shadow-xl backdrop:bg-black/70`}
+            className={`m-auto w-[calc(100%-2rem)] ${size === "xl" ? "max-w-6xl" : size === "lg" ? "max-w-lg" : "max-w-md"} rounded-lg border border-line-strong bg-surface p-6 text-fg shadow-xl backdrop:bg-black/70`}
         >
-            <h2 id="modal-title" className="text-lg font-semibold text-white">
+            <h2 id="modal-title" className="text-lg font-semibold text-fg-strong">
                 {title}
             </h2>
             <div className="mt-4">{children}</div>

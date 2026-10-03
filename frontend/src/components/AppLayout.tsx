@@ -4,9 +4,10 @@ import { hasPermission } from "../auth/permissions";
 import { useAuth } from "../auth/useAuth";
 import { useMaintenance } from "../maintenance/useMaintenance";
 import { ADMIN_TABS } from "../pages/admin/adminTabs";
+import { ThemeToggle } from "./ThemeToggle";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `rounded-md px-3 py-2 text-sm font-medium ${isActive ? "bg-slate-800 text-white" : "text-slate-300 hover:bg-slate-800/60 hover:text-white"}`;
+    `rounded-md px-3 py-2 text-sm font-medium ${isActive ? "bg-raised text-fg-strong" : "text-fg-secondary hover:bg-raised/60 hover:text-fg-strong"}`;
 
 /** Page frame for logged-in users: header with navigation and user menu. */
 export function AppLayout() {
@@ -21,10 +22,10 @@ export function AppLayout() {
 
     return (
         <div className="min-h-screen">
-            <header className="border-b border-slate-800 bg-slate-900">
+            <header className="border-b border-line bg-surface">
                 <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
                     <div className="flex items-center gap-6">
-                        <Link to="/" className="text-lg font-semibold text-white">
+                        <Link to="/" className="text-lg font-semibold text-fg-strong">
                             ServerDashboard
                         </Link>
                         <nav className="flex gap-1">
@@ -39,14 +40,15 @@ export function AppLayout() {
                         </nav>
                     </div>
                     <div className="flex items-center gap-2">
+                        <ThemeToggle />
                         <NavLink to="/account" className={navLinkClass}>
                             {user?.username}
-                            {user?.role && <span className="ml-2 text-xs text-slate-400">{user.role.name}</span>}
+                            {user?.role && <span className="ml-2 text-xs text-fg-muted">{user.role.name}</span>}
                         </NavLink>
                         <button
                             type="button"
                             onClick={() => void logout()}
-                            className="rounded-md px-3 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800/60 hover:text-white"
+                            className="rounded-md px-3 py-2 text-sm font-medium text-fg-secondary hover:bg-raised/60 hover:text-fg-strong"
                         >
                             Log out
                         </button>
@@ -55,13 +57,13 @@ export function AppLayout() {
             </header>
 
             {maintenance?.enabled && (
-                <div className="border-b border-amber-700 bg-amber-900/60">
-                    <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm text-amber-100">
+                <div className="border-b border-warning-line bg-warning-soft/60">
+                    <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm text-warning-fg-strong">
                         <span>
                             <strong>Maintenance mode is active.</strong> Only administrators can use the application.
                         </span>
                         {hasPermission(user, "MAINTENANCE_MANAGE") && (
-                            <Link to="/admin/maintenance" className="font-medium underline hover:text-white">
+                            <Link to="/admin/maintenance" className="font-medium underline hover:text-fg-strong">
                                 Maintenance settings
                             </Link>
                         )}
@@ -70,17 +72,17 @@ export function AppLayout() {
             )}
 
             {showPasswordHint && (
-                <div className="border-b border-amber-800 bg-amber-950/60">
-                    <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm text-amber-200">
+                <div className="border-b border-warning-line bg-warning-soft/60">
+                    <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm text-warning-fg-strong">
                         <span>You are using an initial password. We recommend changing it.</span>
                         <div className="flex gap-3">
-                            <Link to="/account" className="font-medium underline hover:text-white">
+                            <Link to="/account" className="font-medium underline hover:text-fg-strong">
                                 Change password
                             </Link>
                             <button
                                 type="button"
                                 onClick={() => setPasswordHintDismissed(true)}
-                                className="text-amber-300 hover:text-white"
+                                className="text-warning-fg hover:text-fg-strong"
                             >
                                 Dismiss
                             </button>

@@ -13,8 +13,8 @@ export function MaintenanceSettingsPage() {
     return (
         <div className="flex max-w-2xl flex-col gap-4">
             <div>
-                <h2 className="text-lg font-semibold text-white">Maintenance mode</h2>
-                <p className="text-sm text-slate-400">
+                <h2 className="text-lg font-semibold text-fg-strong">Maintenance mode</h2>
+                <p className="text-sm text-fg-muted">
                     While maintenance mode is active, only administrators can log in and use the application.
                     Everyone else sees a maintenance page with the text below.
                 </p>
@@ -28,7 +28,7 @@ export function MaintenanceSettingsPage() {
                     onSaved={() => void settings.reload()}
                 />
             )}
-            {!settings.data && settings.loading && <p className="text-slate-400">Loading…</p>}
+            {!settings.data && settings.loading && <p className="text-fg-muted">Loading…</p>}
         </div>
     );
 }
@@ -64,22 +64,22 @@ function MaintenanceForm({ settings, onSaved }: { settings: MaintenanceStatus; o
             {error !== null && <ErrorAlert error={error} />}
 
             <div
-                className={`rounded-lg border px-5 py-4 ${settings.enabled ? "border-amber-700 bg-amber-950/50" : "border-slate-800 bg-slate-900"}`}
+                className={`rounded-lg border px-5 py-4 ${settings.enabled ? "border-warning-line bg-warning-soft/50" : "border-line bg-surface"}`}
             >
-                <p className="font-medium text-white">
-                    Maintenance mode is <span className={settings.enabled ? "text-amber-300" : "text-emerald-300"}>
+                <p className="font-medium text-fg-strong">
+                    Maintenance mode is <span className={settings.enabled ? "text-warning-fg" : "text-success-fg"}>
                         {settings.enabled ? "active" : "off"}
                     </span>
                 </p>
                 {settings.updatedAt && (
-                    <p className="mt-1 text-sm text-slate-400">
+                    <p className="mt-1 text-sm text-fg-muted">
                         Last changed {formatDateTime(settings.updatedAt)} by {settings.updatedBy}
                     </p>
                 )}
             </div>
 
             <div className="flex flex-col gap-1.5">
-                <label htmlFor="maintenance-message" className="text-sm font-medium text-slate-300">
+                <label htmlFor="maintenance-message" className="text-sm font-medium text-fg-secondary">
                     Information text for the maintenance page
                 </label>
                 <textarea
@@ -89,9 +89,9 @@ function MaintenanceForm({ settings, onSaved }: { settings: MaintenanceStatus; o
                     rows={4}
                     placeholder="e.g. We are updating the server. Expected to be back at 22:00."
                     onChange={(event) => setMessage(event.target.value)}
-                    className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
+                    className="rounded-md border border-line-strong bg-surface px-3 py-2 text-fg outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
                 />
-                <span className="text-right text-xs text-slate-500">
+                <span className="text-right text-xs text-fg-subtle">
                     Plain text · {message.length}/{MAX_MAINTENANCE_MESSAGE_LENGTH}
                 </span>
             </div>

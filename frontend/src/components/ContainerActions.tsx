@@ -119,8 +119,8 @@ export function ContainerActions({ container, mounts = [], variant, onCompleted,
                             variant === "row" ? "px-2.5 py-1 text-xs" : "px-3 py-1.5 text-sm"
                         } ${
                             definition.destructive
-                                ? "border-red-800 text-red-300 enabled:hover:bg-red-950"
-                                : "border-slate-700 text-slate-200 enabled:hover:bg-slate-800"
+                                ? "border-danger-line text-danger-fg enabled:hover:bg-danger-soft"
+                                : "border-line-strong text-fg enabled:hover:bg-raised"
                         }`}
                     >
                         {pending === action && <Spinner />}
@@ -164,7 +164,7 @@ function confirmationText(action: Action, mounts: MountInfo[]): ReactNode {
             return (
                 <>
                     <p>The container will be killed immediately, without a clean shutdown.</p>
-                    <p className="font-medium text-red-300">
+                    <p className="font-medium text-danger-fg">
                         Unsaved data (e.g. game world progress) may be lost or corrupted. Use "Stop" whenever possible.
                     </p>
                 </>
@@ -186,7 +186,7 @@ function DeleteConfirmation({ mounts }: { mounts: MountInfo[] }) {
         <>
             <p>The container will be permanently deleted. This cannot be undone.</p>
             {persistent.length === 0 ? (
-                <p className="font-medium text-red-300">
+                <p className="font-medium text-danger-fg">
                     This container has no volumes or bind mounts. All data stored inside the container will be lost.
                 </p>
             ) : (
@@ -194,15 +194,15 @@ function DeleteConfirmation({ mounts }: { mounts: MountInfo[] }) {
                     <p>The following data is <strong>kept</strong>:</p>
                     <ul className="flex flex-col gap-1.5">
                         {persistent.map((mount, index) => (
-                            <li key={index} className="rounded-md bg-slate-950/60 px-3 py-2">
+                            <li key={index} className="rounded-md bg-page/60 px-3 py-2">
                                 <span className="font-mono text-xs break-all">
                                     {mount.type === "bind" ? mount.source : mount.name}
                                 </span>
-                                <span className="ml-2 text-xs text-slate-400">
+                                <span className="ml-2 text-xs text-fg-muted">
                                     ({mount.type === "bind" ? "bind mount" : "volume"}, mounted at {mount.destination})
                                 </span>
                                 {isAnonymousVolume(mount) && (
-                                    <p className="mt-1 text-xs text-amber-300">
+                                    <p className="mt-1 text-xs text-warning-fg">
                                         Unnamed volume: it remains, but will be hard to identify after the container is gone.
                                         Note the ID if you need the data later.
                                     </p>
@@ -210,7 +210,7 @@ function DeleteConfirmation({ mounts }: { mounts: MountInfo[] }) {
                             </li>
                         ))}
                     </ul>
-                    <p className="text-slate-400">Data stored inside the container outside these paths will be lost.</p>
+                    <p className="text-fg-muted">Data stored inside the container outside these paths will be lost.</p>
                 </>
             )}
         </>

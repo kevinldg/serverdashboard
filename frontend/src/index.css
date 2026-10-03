@@ -1,9 +1,70 @@
 @import "tailwindcss";
 
+/*
+ * Theme colors: each has a light and a dark value, chosen by `color-scheme` via light-dark().
+ * Without a saved choice, the operating system's setting applies; `data-theme` on <html> overrides it
+ * (set by public/theme-init.js and the theme switch in the header).
+ * Solid colors (buttons, status dots, focus rings) use the Tailwind palette directly and look the same in both themes.
+ */
+@theme {
+    /* Neutral */
+    --color-page: light-dark(var(--color-slate-100), var(--color-slate-950));
+    --color-surface: light-dark(var(--color-white), var(--color-slate-900));
+    --color-raised: light-dark(var(--color-slate-100), var(--color-slate-800));
+    --color-line: light-dark(var(--color-slate-200), var(--color-slate-800));
+    --color-line-strong: light-dark(var(--color-slate-300), var(--color-slate-700));
+    --color-fg-strong: light-dark(var(--color-slate-900), var(--color-white));
+    --color-fg: light-dark(var(--color-slate-800), var(--color-slate-100));
+    --color-fg-secondary: light-dark(var(--color-slate-700), var(--color-slate-300));
+    --color-fg-muted: light-dark(var(--color-slate-600), var(--color-slate-400));
+    --color-fg-subtle: light-dark(var(--color-slate-500), var(--color-slate-500));
+
+    /* Accent (links, primary actions, information) */
+    --color-accent-soft: light-dark(var(--color-sky-50), var(--color-sky-950));
+    --color-accent-line: light-dark(var(--color-sky-200), var(--color-sky-800));
+    --color-accent-fg: light-dark(var(--color-sky-700), var(--color-sky-300));
+    --color-accent-fg-strong: light-dark(var(--color-sky-800), var(--color-sky-200));
+    --color-accent-fg-vivid: light-dark(var(--color-sky-600), var(--color-sky-400));
+
+    /* Danger (errors, destructive actions) */
+    --color-danger-soft: light-dark(var(--color-red-50), var(--color-red-950));
+    --color-danger-line: light-dark(var(--color-red-200), var(--color-red-800));
+    --color-danger-fg: light-dark(var(--color-red-700), var(--color-red-300));
+    --color-danger-fg-strong: light-dark(var(--color-red-800), var(--color-red-200));
+    --color-danger-fg-vivid: light-dark(var(--color-red-600), var(--color-red-400));
+
+    /* Warning (maintenance, hints) */
+    --color-warning-soft: light-dark(var(--color-amber-50), var(--color-amber-950));
+    --color-warning-line: light-dark(var(--color-amber-300), var(--color-amber-800));
+    --color-warning-fg: light-dark(var(--color-amber-800), var(--color-amber-300));
+    --color-warning-fg-strong: light-dark(var(--color-amber-900), var(--color-amber-200));
+
+    /* Success (running, saved) */
+    --color-success-soft: light-dark(var(--color-emerald-50), var(--color-emerald-950));
+    --color-success-line: light-dark(var(--color-emerald-200), var(--color-emerald-800));
+    --color-success-fg: light-dark(var(--color-emerald-700), var(--color-emerald-300));
+    --color-success-fg-strong: light-dark(var(--color-emerald-800), var(--color-emerald-200));
+    --color-success-fg-vivid: light-dark(var(--color-emerald-600), var(--color-emerald-400));
+
+    /* Game servers */
+    --color-game-soft: light-dark(var(--color-violet-50), var(--color-violet-950));
+    --color-game-line: light-dark(var(--color-violet-200), var(--color-violet-800));
+    --color-game-fg: light-dark(var(--color-violet-700), var(--color-violet-300));
+    --color-game-fg-vivid: light-dark(var(--color-violet-600), var(--color-violet-400));
+}
+
 :root {
+    color-scheme: light dark;
+}
+
+:root[data-theme="light"] {
+    color-scheme: light;
+}
+
+:root[data-theme="dark"] {
     color-scheme: dark;
 }
 
 body {
-    @apply bg-slate-950 text-slate-100 antialiased;
+    @apply bg-page text-fg antialiased;
 }

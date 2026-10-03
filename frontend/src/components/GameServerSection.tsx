@@ -33,12 +33,12 @@ export function GameServerSection({ container, onChanged }: { container: Contain
                 {gameServer.gameServer ? (
                     <span className="flex items-center gap-2">
                         <GameServerBadge status={gameServer} />
-                        <span className="text-slate-400">{GAME_SERVER_SOURCE_LABELS[gameServer.source]}</span>
+                        <span className="text-fg-muted">{GAME_SERVER_SOURCE_LABELS[gameServer.source]}</span>
                     </span>
                 ) : (
-                    <span className="text-slate-300">
+                    <span className="text-fg-secondary">
                         Not a game server
-                        <span className="ml-2 text-slate-400">
+                        <span className="ml-2 text-fg-muted">
                             ({gameServer.source === "NONE" ? "not detected automatically" : GAME_SERVER_SOURCE_LABELS[gameServer.source]})
                         </span>
                     </span>
@@ -102,21 +102,21 @@ function ClassificationModal({ container, onSaved, onClose }: {
                 <label className="flex items-start gap-3">
                     <input type="radio" className="mt-1" checked={mode === "AUTOMATIC"} onChange={() => setMode("AUTOMATIC")} />
                     <span>
-                        <span className="block font-medium text-slate-100">Automatic</span>
-                        <span className="text-slate-400">Currently: {describe(container.detectedGameServer)}</span>
+                        <span className="block font-medium text-fg">Automatic</span>
+                        <span className="text-fg-muted">Currently: {describe(container.detectedGameServer)}</span>
                     </span>
                 </label>
 
                 <label className="flex items-start gap-3">
                     <input type="radio" className="mt-1" checked={mode === "GAME_SERVER"} onChange={() => setMode("GAME_SERVER")} />
                     <span className="flex flex-1 flex-col gap-2">
-                        <span className="font-medium text-slate-100">Game server</span>
+                        <span className="font-medium text-fg">Game server</span>
                         <select
                             value={profile}
                             disabled={mode !== "GAME_SERVER"}
                             onChange={(event) => setProfile(event.target.value)}
                             aria-label="Game server profile"
-                            className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 disabled:opacity-50"
+                            className="rounded-md border border-line-strong bg-surface px-3 py-2 text-fg disabled:opacity-50"
                         >
                             <option value={GENERIC}>Generic game server (no profile)</option>
                             {profiles.data?.map((option) => (
@@ -130,10 +130,10 @@ function ClassificationModal({ container, onSaved, onClose }: {
 
                 <label className="flex items-start gap-3">
                     <input type="radio" className="mt-1" checked={mode === "NOT_GAME_SERVER"} onChange={() => setMode("NOT_GAME_SERVER")} />
-                    <span className="font-medium text-slate-100">Not a game server</span>
+                    <span className="font-medium text-fg">Not a game server</span>
                 </label>
 
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-fg-muted">
                     A manual classification is stored by container name, so it is kept when the container is recreated
                     (e.g. after an image update). It takes precedence over automatic detection.
                 </p>

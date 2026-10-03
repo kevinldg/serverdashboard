@@ -7,7 +7,7 @@ export function RequireAuth() {
     const location = useLocation();
 
     if (loading) {
-        return <div className="flex min-h-screen items-center justify-center text-slate-400">Loading…</div>;
+        return <div className="flex min-h-screen items-center justify-center text-fg-muted">Loading…</div>;
     }
     if (!user) {
         return <Navigate to="/login" replace state={{ from: location.pathname }} />;

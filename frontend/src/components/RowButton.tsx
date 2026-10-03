@@ -12,7 +12,7 @@ export function RowButton({ children, onClick, danger = false, disabledReason }:
             disabled={disabledReason !== undefined}
             title={disabledReason}
             className={`rounded-md border px-2.5 py-1 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-40 ${
-                danger ? "border-red-800 text-red-300 enabled:hover:bg-red-950" : "border-slate-700 text-slate-200 enabled:hover:bg-slate-800"
+                danger ? "border-danger-line text-danger-fg enabled:hover:bg-danger-soft" : "border-line-strong text-fg enabled:hover:bg-raised"
             }`}
         >
             {children}

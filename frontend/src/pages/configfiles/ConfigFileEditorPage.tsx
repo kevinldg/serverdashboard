@@ -13,6 +13,7 @@ import { ConfirmModal } from "../../components/ConfirmModal";
 import { ErrorAlert } from "../../components/ErrorAlert";
 import { Modal } from "../../components/Modal";
 import { useApiData } from "../../hooks/useApiData";
+import { useTheme } from "../../theme/useTheme";
 import { formatDateTime } from "../../utils/format";
 
 /** Loaded lazily (see App.tsx), so the Monaco editor is only downloaded when a file is opened. */
@@ -32,17 +33,17 @@ function FileLoader({ containerId, path, onReload }: { containerId: string; path
     return (
         <div className="flex flex-col gap-4">
             <div>
-                <Link to={`/containers/${containerId}`} className="text-sm text-sky-400 hover:underline">
+                <Link to={`/containers/${containerId}`} className="text-sm text-accent-fg-vivid hover:underline">
                     ← Container
                 </Link>
-                <span className="mx-2 text-slate-600">·</span>
-                <Link to={`/containers/${containerId}/files?path=${encodeURIComponent(parent)}`} className="text-sm text-sky-400 hover:underline">
+                <span className="mx-2 text-fg-subtle">·</span>
+                <Link to={`/containers/${containerId}/files?path=${encodeURIComponent(parent)}`} className="text-sm text-accent-fg-vivid hover:underline">
                     Folder
                 </Link>
-                <h1 className="mt-2 font-mono text-xl font-semibold text-white">{path}</h1>
+                <h1 className="mt-2 font-mono text-xl font-semibold text-fg-strong">{path}</h1>
             </div>
             {file.error !== null && <ErrorAlert error={file.error} />}
-            {!file.data && file.loading && <p className="text-slate-400">Loading…</p>}
+            {!file.data && file.loading && <p className="text-fg-muted">Loading…</p>}
             {file.data && <FileEditor containerId={containerId} file={file.data} onReload={onReload} />}
         </div>
     );
@@ -50,6 +51,7 @@ function FileLoader({ containerId, path, onReload }: { containerId: string; path
 
 function FileEditor({ containerId, file, onReload }: { containerId: string; file: FileContent; onReload: () => void }) {
     const { user } = useAuth();
+    const editorTheme = useEditorTheme();
     const canEdit = hasPermission(user, "GAMESERVER_CONFIG_EDIT");
     const canRestart = hasPermission(user, "CONTAINER_RESTART");
 
@@ -116,7 +118,7 @@ function FileEditor({ containerId, file, onReload }: { containerId: string; file
                     <button type="button" onClick={onReload} className={buttonStyles.secondary}>
                         Reload the file
                     </button>
-                    <span className="text-slate-400">Your unsaved changes will be discarded. Copy them first if you need them.</span>
+                    <span className="text-fg-muted">Your unsaved changes will be discarded. Copy them first if you need them.</span>
                 </div>
             )}
             {saved && (
@@ -133,8 +135,8 @@ function FileEditor({ containerId, file, onReload }: { containerId: string; file
             )}
 
             <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-                <span className="text-slate-400">
-                    {dirty ? <span className="text-amber-300">Unsaved changes</span> : "No unsaved changes"}
+                <span className="text-fg-muted">
+                    {dirty ? <span className="text-warning-fg">Unsaved changes</span> : "No unsaved changes"}
                     {" · "}last modified {formatDateTime(file.modifiedAt)}
                 </span>
                 <div className="flex gap-2">
@@ -156,10 +158,10 @@ function FileEditor({ containerId, file, onReload }: { containerId: string; file
                 </div>
             </div>
 
-            <div className="overflow-hidden rounded-md border border-slate-800">
+            <div className="overflow-hidden rounded-md border border-line">
                 <Editor
                     height="65vh"
-                    theme="vs-dark"
+                    theme={editorTheme}
                     language={languageOf(file.path)}
                     value={value}
                     onChange={(newValue) => setValue(newValue ?? "")}
@@ -198,20 +200,21 @@ function PreviousVersionModal({ containerId, path, current, canEdit, onLoad, onC
     onClose: () => void;
 }) {
     const backup = useApiData(() => getConfigFileBackup(containerId, path));
+    const editorTheme = useEditorTheme();
 
     return (
         <Modal title="Previous version" onClose={onClose} size="xl">
             {backup.error !== null && <ErrorAlert error={backup.error} />}
             {backup.data && (
                 <div className="flex flex-col gap-3">
-                    <p className="text-sm text-slate-400">
+                    <p className="text-sm text-fg-muted">
                         Left: version replaced by {backup.data.replacedBy} on {formatDateTime(backup.data.replacedAt)}. Right: the editor's
                         current content.
                     </p>
-                    <div className="overflow-hidden rounded-md border border-slate-800">
+                    <div className="overflow-hidden rounded-md border border-line">
                         <DiffEditor
                             height="60vh"
-                            theme="vs-dark"
+                            theme={editorTheme}
                             language={languageOf(path)}
                             original={backup.data.content}
                             modified={current}
@@ -232,4 +235,8 @@ function PreviousVersionModal({ containerId, path, current, canEdit, onLoad, onC
             )}
         </Modal>
     );
+}
+
+function useEditorTheme() {
+    return useTheme().theme === "dark" ? "vs-dark" : "vs";
 }

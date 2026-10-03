@@ -25,10 +25,10 @@ import { formatDateTime, fromDateTimeLocal, toDateTimeLocal } from "../../utils/
 type Dialog = { type: "create" } | { type: "edit"; announcement: ManagedAnnouncement } | { type: "delete"; announcement: ManagedAnnouncement };
 
 const STATUS_STYLES: Record<AnnouncementStatus, { label: string; className: string }> = {
-    VISIBLE: { label: "visible", className: "bg-emerald-950 text-emerald-300 ring-emerald-800" },
-    SCHEDULED: { label: "scheduled", className: "bg-sky-950 text-sky-300 ring-sky-800" },
-    EXPIRED: { label: "expired", className: "bg-slate-800 text-slate-400 ring-slate-700" },
-    INACTIVE: { label: "inactive", className: "bg-slate-800 text-slate-300 ring-slate-700" },
+    VISIBLE: { label: "visible", className: "bg-success-soft text-success-fg ring-success-line" },
+    SCHEDULED: { label: "scheduled", className: "bg-accent-soft text-accent-fg ring-accent-line" },
+    EXPIRED: { label: "expired", className: "bg-raised text-fg-muted ring-line-strong" },
+    INACTIVE: { label: "inactive", className: "bg-raised text-fg-secondary ring-line-strong" },
 };
 
 const toInput = (announcement: ManagedAnnouncement, active: boolean): AnnouncementInput => ({
@@ -61,8 +61,8 @@ export function AnnouncementsPage() {
         <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-lg font-semibold text-white">Announcements</h2>
-                    <p className="text-sm text-slate-400">
+                    <h2 className="text-lg font-semibold text-fg-strong">Announcements</h2>
+                    <p className="text-sm text-fg-muted">
                         Active announcements are shown on the dashboard within their optional time window.
                     </p>
                 </div>
@@ -83,9 +83,9 @@ export function AnnouncementsPage() {
             {announcements.error !== null && <ErrorAlert error={announcements.error} />}
 
             {announcements.data && (
-                <div className="overflow-x-auto rounded-lg border border-slate-800">
+                <div className="overflow-x-auto rounded-lg border border-line">
                     <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-900 text-xs uppercase tracking-wide text-slate-400">
+                        <thead className="bg-surface text-xs uppercase tracking-wide text-fg-muted">
                             <tr>
                                 <th className="px-4 py-3 font-medium">Title</th>
                                 <th className="px-4 py-3 font-medium">Status</th>
@@ -95,12 +95,12 @@ export function AnnouncementsPage() {
                                 <th className="px-4 py-3 font-medium">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800">
+                        <tbody className="divide-y divide-line">
                             {announcements.data.map((announcement) => (
-                                <tr key={announcement.id} className="hover:bg-slate-900/60">
+                                <tr key={announcement.id} className="hover:bg-surface/60">
                                     <td className="max-w-xs px-4 py-3">
                                         <span className="font-medium">{announcement.title}</span>
-                                        <p className="truncate text-xs text-slate-400" title={announcement.message}>
+                                        <p className="truncate text-xs text-fg-muted" title={announcement.message}>
                                             {announcement.message}
                                         </p>
                                     </td>
@@ -111,13 +111,13 @@ export function AnnouncementsPage() {
                                             {STATUS_STYLES[announcement.status].label}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-3 text-slate-400">
+                                    <td className="px-4 py-3 text-fg-muted">
                                         {announcement.startsAt ? formatDateTime(announcement.startsAt) : "immediately"}
                                     </td>
-                                    <td className="px-4 py-3 text-slate-400">
+                                    <td className="px-4 py-3 text-fg-muted">
                                         {announcement.endsAt ? formatDateTime(announcement.endsAt) : "no end"}
                                     </td>
-                                    <td className="px-4 py-3 text-slate-400">
+                                    <td className="px-4 py-3 text-fg-muted">
                                         {formatDateTime(announcement.updatedAt)}
                                         <span className="block text-xs">by {announcement.updatedBy}</span>
                                     </td>
@@ -143,7 +143,7 @@ export function AnnouncementsPage() {
                             ))}
                             {announcements.data.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
+                                    <td colSpan={6} className="px-4 py-6 text-center text-fg-muted">
                                         No announcements yet.
                                     </td>
                                 </tr>
@@ -152,7 +152,7 @@ export function AnnouncementsPage() {
                     </table>
                 </div>
             )}
-            {!announcements.data && announcements.loading && <p className="text-slate-400">Loading announcements…</p>}
+            {!announcements.data && announcements.loading && <p className="text-fg-muted">Loading announcements…</p>}
 
             {(dialog?.type === "create" || dialog?.type === "edit") && (
                 <AnnouncementFormModal
@@ -182,7 +182,7 @@ export function AnnouncementsPage() {
                     }}
                 >
                     <p>The announcement will be permanently deleted. This cannot be undone.</p>
-                    <p className="text-slate-400">To hide it temporarily instead, deactivate it.</p>
+                    <p className="text-fg-muted">To hide it temporarily instead, deactivate it.</p>
                 </ConfirmModal>
             )}
         </div>
@@ -256,7 +256,7 @@ function AnnouncementFormModal({ announcement, onSaved, onClose }: AnnouncementF
                 />
 
                 <div className="flex flex-col gap-1.5">
-                    <label htmlFor="announcement-message" className="text-sm font-medium text-slate-300">
+                    <label htmlFor="announcement-message" className="text-sm font-medium text-fg-secondary">
                         Message
                     </label>
                     <textarea
@@ -266,11 +266,11 @@ function AnnouncementFormModal({ announcement, onSaved, onClose }: AnnouncementF
                         rows={5}
                         onChange={(event) => setMessage(event.target.value)}
                         aria-invalid={fieldErrors.message ? true : undefined}
-                        className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 aria-invalid:border-red-500"
+                        className="rounded-md border border-line-strong bg-surface px-3 py-2 text-fg outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 aria-invalid:border-red-500"
                     />
                     <div className="flex justify-between text-xs">
-                        <span className="text-red-400">{fieldErrors.message}</span>
-                        <span className="text-slate-500">
+                        <span className="text-danger-fg-vivid">{fieldErrors.message}</span>
+                        <span className="text-fg-subtle">
                             Plain text, line breaks are kept · {message.length}/{MAX_MESSAGE_LENGTH}
                         </span>
                     </div>
@@ -280,7 +280,7 @@ function AnnouncementFormModal({ announcement, onSaved, onClose }: AnnouncementF
                     <DateTimeField label="Show from (optional)" value={startsAt} onChange={setStartsAt} error={fieldErrors.startsAt} />
                     <DateTimeField label="Show until (optional)" value={endsAt} onChange={setEndsAt} error={fieldErrors.endsAt} />
                 </div>
-                <p className="-mt-2 text-xs text-slate-400">
+                <p className="-mt-2 text-xs text-fg-muted">
                     Times are in your browser's time zone. Without an end time, the announcement stays until it is deactivated.
                 </p>
 
@@ -310,7 +310,7 @@ function DateTimeField({ label, value, onChange, error }: {
 }) {
     return (
         <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-slate-300">{label}</span>
+            <span className="text-sm font-medium text-fg-secondary">{label}</span>
             <div className="flex gap-2">
                 <input
                     type="datetime-local"
@@ -318,15 +318,15 @@ function DateTimeField({ label, value, onChange, error }: {
                     value={value}
                     onChange={(event) => onChange(event.target.value)}
                     aria-invalid={error ? true : undefined}
-                    className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 aria-invalid:border-red-500"
+                    className="w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-fg aria-invalid:border-red-500"
                 />
                 {value && (
-                    <button type="button" onClick={() => onChange("")} className="text-xs text-sky-400 hover:underline">
+                    <button type="button" onClick={() => onChange("")} className="text-xs text-accent-fg-vivid hover:underline">
                         Clear
                     </button>
                 )}
             </div>
-            {error && <p className="text-sm text-red-400">{error}</p>}
+            {error && <p className="text-sm text-danger-fg-vivid">{error}</p>}
         </div>
     );
 }

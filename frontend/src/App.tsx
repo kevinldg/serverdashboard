@@ -27,7 +27,7 @@ export default function App() {
     const {status: maintenance} = useMaintenance();
 
     if (loading || maintenance === null) {
-        return <div className="flex min-h-screen items-center justify-center text-slate-400">Loading…</div>;
+        return <div className="flex min-h-screen items-center justify-center text-fg-muted">Loading…</div>;
     }
 
     // During maintenance, only administrators can use the application; the login stays reachable for them.
@@ -51,7 +51,7 @@ export default function App() {
                     <Route path="containers/:id/files" element={<RequirePermission permission="GAMESERVER_CONFIG_VIEW"><FileBrowserPage/></RequirePermission>}/>
                     <Route path="containers/:id/files/edit" element={
                         <RequirePermission permission="GAMESERVER_CONFIG_VIEW">
-                            <Suspense fallback={<p className="text-slate-400">Loading editor…</p>}><ConfigFileEditorPage/></Suspense>
+                            <Suspense fallback={<p className="text-fg-muted">Loading editor…</p>}><ConfigFileEditorPage/></Suspense>
                         </RequirePermission>
                     }/>
                     <Route path="account" element={<AccountPage/>}/>

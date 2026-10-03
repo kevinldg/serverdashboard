@@ -27,14 +27,14 @@ export function CreateContainerPage() {
     return (
         <div className="flex flex-col gap-6">
             <div>
-                <Link to="/" className="text-sm text-sky-400 hover:underline">
+                <Link to="/" className="text-sm text-accent-fg-vivid hover:underline">
                     ← Dashboard
                 </Link>
-                <h1 className="mt-2 text-2xl font-semibold text-white">Create container</h1>
+                <h1 className="mt-2 text-2xl font-semibold text-fg-strong">Create container</h1>
             </div>
 
             {options.error !== null && <ErrorAlert error={options.error} />}
-            {!options.data && options.loading && <p className="text-slate-400">Loading…</p>}
+            {!options.data && options.loading && <p className="text-fg-muted">Loading…</p>}
 
             {options.data && step.kind === "choose" && (
                 <StartingPoints
@@ -64,27 +64,27 @@ export function CreateContainerPage() {
 function StartingPoints({ templates, onChoose }: { templates: TemplateInfo[]; onChoose: (template: TemplateInfo | null) => void }) {
     return (
         <div className="flex flex-col gap-3">
-            <p className="text-sm text-slate-400">Choose a starting point. Every value can be changed in the next step.</p>
+            <p className="text-sm text-fg-muted">Choose a starting point. Every value can be changed in the next step.</p>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <button
                     type="button"
                     onClick={() => onChoose(null)}
-                    className="rounded-lg border border-slate-800 bg-slate-900 p-5 text-left hover:border-sky-600"
+                    className="rounded-lg border border-line bg-surface p-5 text-left hover:border-sky-600"
                 >
-                    <h2 className="font-semibold text-white">Empty container</h2>
-                    <p className="mt-1 text-sm text-slate-400">Any image, configured manually.</p>
+                    <h2 className="font-semibold text-fg-strong">Empty container</h2>
+                    <p className="mt-1 text-sm text-fg-muted">Any image, configured manually.</p>
                 </button>
                 {templates.map((info) => (
                     <button
                         key={info.template.id}
                         type="button"
                         onClick={() => onChoose(info)}
-                        className="rounded-lg border border-violet-900 bg-slate-900 p-5 text-left hover:border-violet-500"
+                        className="rounded-lg border border-game-line bg-surface p-5 text-left hover:border-violet-500"
                     >
-                        <span className="text-xs font-medium uppercase tracking-wide text-violet-300">Game server</span>
-                        <h2 className="font-semibold text-white">{info.template.name}</h2>
-                        <p className="mt-1 text-sm text-slate-400">{info.template.description}</p>
-                        <p className="mt-2 font-mono text-xs text-slate-500">{info.template.image}</p>
+                        <span className="text-xs font-medium uppercase tracking-wide text-game-fg">Game server</span>
+                        <h2 className="font-semibold text-fg-strong">{info.template.name}</h2>
+                        <p className="mt-1 text-sm text-fg-muted">{info.template.description}</p>
+                        <p className="mt-2 font-mono text-xs text-fg-subtle">{info.template.image}</p>
                     </button>
                 ))}
             </div>
@@ -151,23 +151,23 @@ function ProgressStep({ jobId, onBackToForm }: { jobId: string; onBackToForm: ()
     }, [jobId]);
 
     if (!job) {
-        return <p className="text-slate-400">Starting…</p>;
+        return <p className="text-fg-muted">Starting…</p>;
     }
 
     const running = job.status === "PULLING_IMAGE" || job.status === "CREATING" || job.status === "STARTING";
     return (
-        <div className="flex max-w-2xl flex-col gap-4 rounded-lg border border-slate-800 bg-slate-900 p-6">
-            <h2 className="text-lg font-semibold text-white">{job.containerName}</h2>
-            <p className={job.status === "COMPLETED" ? "text-emerald-300" : running ? "text-slate-200" : "text-amber-300"}>
+        <div className="flex max-w-2xl flex-col gap-4 rounded-lg border border-line bg-surface p-6">
+            <h2 className="text-lg font-semibold text-fg-strong">{job.containerName}</h2>
+            <p className={job.status === "COMPLETED" ? "text-success-fg" : running ? "text-fg" : "text-warning-fg"}>
                 {job.message}
             </p>
             {job.status === "PULLING_IMAGE" && (
-                <div className="h-2 overflow-hidden rounded-full bg-slate-800" role="progressbar" aria-valuenow={job.progress ?? 0}>
+                <div className="h-2 overflow-hidden rounded-full bg-raised" role="progressbar" aria-valuenow={job.progress ?? 0}>
                     <div className="h-full bg-sky-500 transition-all" style={{ width: `${job.progress ?? 0}%` }} />
                 </div>
             )}
             {job.technicalError && (
-                <details className="text-xs text-slate-400">
+                <details className="text-xs text-fg-muted">
                     <summary className="cursor-pointer">Technical details</summary>
                     <p className="mt-1 font-mono break-all">{job.technicalError}</p>
                 </details>

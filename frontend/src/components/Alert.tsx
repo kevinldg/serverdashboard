@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 
 const variants = {
-    error: "border-red-800 bg-red-950/60 text-red-200",
-    success: "border-emerald-800 bg-emerald-950/60 text-emerald-200",
-    info: "border-sky-800 bg-sky-950/60 text-sky-200",
+    error: "border-danger-line bg-danger-soft/60 text-danger-fg-strong",
+    success: "border-success-line bg-success-soft/60 text-success-fg-strong",
+    info: "border-accent-line bg-accent-soft/60 text-accent-fg-strong",
 };
 
 interface AlertProps {

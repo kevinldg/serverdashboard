@@ -8,7 +8,7 @@ export function GameServerBadge({ status }: { status: GameServerStatus }) {
     }
     return (
         <span
-            className="inline-flex items-center rounded-full bg-violet-950 px-2 py-0.5 text-xs font-medium text-violet-300 ring-1 ring-inset ring-violet-800"
+            className="inline-flex items-center rounded-full bg-game-soft px-2 py-0.5 text-xs font-medium text-game-fg ring-1 ring-inset ring-game-line"
             title={`Game server (${GAME_SERVER_SOURCE_LABELS[status.source]})`}
         >
             {status.profileName}

@@ -10,13 +10,13 @@ export function RefreshButton({ onRefresh, loading, lastUpdated }: RefreshButton
     return (
         <div className="flex items-center gap-3">
             {lastUpdated && (
-                <span className="text-xs text-slate-400">Last updated: {formatTime(lastUpdated)}</span>
+                <span className="text-xs text-fg-muted">Last updated: {formatTime(lastUpdated)}</span>
             )}
             <button
                 type="button"
                 onClick={onRefresh}
                 disabled={loading}
-                className="inline-flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-fg hover:bg-raised disabled:cursor-not-allowed disabled:opacity-60"
             >
                 <svg
                     className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}

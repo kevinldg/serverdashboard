@@ -30,10 +30,10 @@ export function CredentialsDisplay({ username, password }: { username: string; p
 
     return (
         <div className="flex flex-col gap-3">
-            <dl className="grid grid-cols-[6rem_1fr] items-center gap-y-2 rounded-md bg-slate-950/60 px-4 py-3 text-sm">
-                <dt className="text-slate-400">Username</dt>
+            <dl className="grid grid-cols-[6rem_1fr] items-center gap-y-2 rounded-md bg-page/60 px-4 py-3 text-sm">
+                <dt className="text-fg-muted">Username</dt>
                 <dd className="font-mono">{username}</dd>
-                <dt className="text-slate-400">Password</dt>
+                <dt className="text-fg-muted">Password</dt>
                 <dd className="flex items-center gap-2">
                     {revealed ? (
                         <input
@@ -41,17 +41,17 @@ export function CredentialsDisplay({ username, password }: { username: string; p
                             value={password}
                             aria-label="Password"
                             onFocus={(event) => event.target.select()}
-                            className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 font-mono text-sm"
+                            className="w-full rounded border border-line-strong bg-surface px-2 py-1 font-mono text-sm"
                         />
                     ) : (
-                        <span className="font-mono tracking-widest text-slate-300" aria-label="Password hidden">
+                        <span className="font-mono tracking-widest text-fg-secondary" aria-label="Password hidden">
                             {"•".repeat(password.length)}
                         </span>
                     )}
                     <button
                         type="button"
                         onClick={() => setRevealed(!revealed)}
-                        className="shrink-0 text-xs text-sky-400 hover:underline"
+                        className="shrink-0 text-xs text-accent-fg-vivid hover:underline"
                     >
                         {revealed ? "Hide" : "Show"}
                     </button>
@@ -62,19 +62,19 @@ export function CredentialsDisplay({ username, password }: { username: string; p
                 <button
                     type="button"
                     onClick={() => void copyCredentials()}
-                    className="rounded-md border border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-800"
+                    className="rounded-md border border-line-strong px-3 py-1.5 text-sm font-medium text-fg hover:bg-raised"
                 >
                     Copy credentials
                 </button>
-                {copyState === "copied" && <span className="text-sm text-emerald-400">Copied to clipboard.</span>}
+                {copyState === "copied" && <span className="text-sm text-success-fg-vivid">Copied to clipboard.</span>}
             </div>
             {copyState === "unavailable" && (
-                <p className="text-xs text-amber-300">
+                <p className="text-xs text-warning-fg">
                     Copying is not available here (it requires HTTPS). The password is now shown above; select it to
                     copy it manually.
                 </p>
             )}
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-fg-muted">
                 This password is shown only once. Pass it on to the user securely.
             </p>
         </div>

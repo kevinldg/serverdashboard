@@ -51,20 +51,20 @@ export function AccountPage() {
     return (
         <div className="flex max-w-lg flex-col gap-8">
             <section>
-                <h1 className="text-2xl font-semibold text-white">Account</h1>
+                <h1 className="text-2xl font-semibold text-fg-strong">Account</h1>
                 <dl className="mt-4 grid grid-cols-[8rem_1fr] gap-y-2 text-sm">
-                    <dt className="text-slate-400">Username</dt>
+                    <dt className="text-fg-muted">Username</dt>
                     <dd>{user?.username}</dd>
-                    <dt className="text-slate-400">Role</dt>
+                    <dt className="text-fg-muted">Role</dt>
                     <dd>{user?.role?.name ?? "–"}</dd>
                 </dl>
             </section>
 
             <section>
-                <h2 className="text-lg font-semibold text-white">Change password</h2>
+                <h2 className="text-lg font-semibold text-fg-strong">Change password</h2>
                 <form
                     onSubmit={handleSubmit}
-                    className="mt-4 flex flex-col gap-4 rounded-lg border border-slate-800 bg-slate-900 p-6"
+                    className="mt-4 flex flex-col gap-4 rounded-lg border border-line bg-surface p-6"
                 >
                     {error && <Alert variant="error">{error}</Alert>}
                     {success && <Alert variant="success">Your password has been changed.</Alert>}
@@ -95,7 +95,7 @@ export function AccountPage() {
                         error={fieldErrors.confirmPassword}
                         required
                     />
-                    <p className="text-xs text-slate-400">At least {MIN_PASSWORD_LENGTH} characters.</p>
+                    <p className="text-xs text-fg-muted">At least {MIN_PASSWORD_LENGTH} characters.</p>
                     <button
                         type="submit"
                         disabled={submitting}

@@ -10,9 +10,9 @@ export function MaintenancePage() {
 
     return (
         <div className="flex min-h-screen items-center justify-center px-4">
-            <div className="w-full max-w-lg rounded-lg border border-amber-800 bg-slate-900 p-8 text-center">
-                <h1 className="text-2xl font-semibold text-white">Under maintenance</h1>
-                <p className="mt-4 whitespace-pre-line text-slate-300">
+            <div className="w-full max-w-lg rounded-lg border border-warning-line bg-surface p-8 text-center">
+                <h1 className="text-2xl font-semibold text-fg-strong">Under maintenance</h1>
+                <p className="mt-4 whitespace-pre-line text-fg-secondary">
                     {status?.message || "The application is currently unavailable due to maintenance. Please try again later."}
                 </p>
                 <div className="mt-8 flex flex-col items-center gap-3">
@@ -20,11 +20,11 @@ export function MaintenancePage() {
                         Check again
                     </button>
                     {user ? (
-                        <button type="button" onClick={() => void logout()} className="text-sm text-sky-400 hover:underline">
+                        <button type="button" onClick={() => void logout()} className="text-sm text-accent-fg-vivid hover:underline">
                             Log out ({user.username})
                         </button>
                     ) : (
-                        <Link to="/login" className="text-sm text-slate-400 hover:text-sky-400 hover:underline">
+                        <Link to="/login" className="text-sm text-fg-muted hover:text-accent-fg-vivid hover:underline">
                             Administrator login
                         </Link>
                     )}
