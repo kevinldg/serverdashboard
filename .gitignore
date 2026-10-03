@@ -32,3 +32,6 @@ backend/src/main/resources/static/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Personal project notes (local only)
+docs/memory.md

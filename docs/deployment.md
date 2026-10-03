@@ -9,6 +9,10 @@ It is reachable on the local network only: `http://<server>:8090` (plain HTTP).
 - A user in the `docker` group to run the commands (here: `serverdashboard`)
 - Internet access during the build (base images, npm and Maven dependencies)
 - MongoDB Atlas must accept connections from the server's public IP ("Network Access" in Atlas)
+- The Atlas database user needs `readWrite` on the production database ("Database Access" in Atlas); otherwise the
+  start fails with `user is not allowed to do action [createIndex]`
+- The directories below `BIND_MOUNT_ROOT` are created beforehand by a user who owns them; the dashboard never
+  creates them
 - Port 8090 must **not** be forwarded to the internet by the router
 
 ## First installation

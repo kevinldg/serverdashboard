@@ -55,7 +55,8 @@ Decisions that complement `requirements.md`. Update this file when a decision ch
 - The frontend asks for confirmation (modal) for every action except start. The delete confirmation lists
   the volumes and bind mounts that remain and warns about unnamed volumes and data stored inside the container.
 - Destructive actions are tested against a local Docker daemon (e.g. the development sandbox), never against
-  the production containers.
+  the production containers. On the real server, only smoke tests with the owner's explicit OK each time, using a
+  container named `serverdashboard-test`; leftover volumes and images are only removed after asking.
 
 ## Game Servers
 
