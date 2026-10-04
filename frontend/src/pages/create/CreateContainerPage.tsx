@@ -156,7 +156,7 @@ function ProgressStep({ jobId, onBackToForm }: { jobId: string; onBackToForm: ()
 
     const running = job.status === "PULLING_IMAGE" || job.status === "CREATING" || job.status === "STARTING";
     return (
-        <div className="flex max-w-2xl flex-col gap-4 rounded-lg border border-line bg-surface p-6">
+        <div className="flex max-w-2xl flex-col gap-4 rounded-lg border border-line bg-surface p-4 sm:p-6">
             <h2 className="text-lg font-semibold text-fg-strong">{job.containerName}</h2>
             <p className={job.status === "COMPLETED" ? "text-success-fg" : running ? "text-fg" : "text-warning-fg"}>
                 {job.message}
@@ -175,7 +175,7 @@ function ProgressStep({ jobId, onBackToForm }: { jobId: string; onBackToForm: ()
             {connectionLost && running && (
                 <Alert variant="info">The connection was lost. The container is still being created on the server.</Alert>
             )}
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
                 {job.containerId && !running && (
                     <Link to={`/containers/${job.containerId}`} className={buttonStyles.primary}>
                         Open container

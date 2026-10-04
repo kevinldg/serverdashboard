@@ -22,9 +22,9 @@ export function ConfigFilesSection({ containerId }: { containerId: string }) {
                 <ul className="flex flex-col divide-y divide-line rounded-md border border-line">
                     {knownFiles.map((file) => (
                         <li key={file.path} className="flex items-center justify-between gap-3 px-4 py-2">
-                            <span>
+                            <span className="min-w-0">
                                 <span className="font-mono">{file.name}</span>
-                                <span className="ml-3 text-xs text-fg-subtle">
+                                <span className="block text-xs wrap-break-word text-fg-subtle sm:ml-3 sm:inline">
                                     {file.path} · {formatDateTime(file.modifiedAt)}
                                 </span>
                             </span>

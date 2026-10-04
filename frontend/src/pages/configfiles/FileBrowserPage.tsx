@@ -35,7 +35,7 @@ function DirectoryView({ containerId, path }: { containerId: string; path: strin
 
             {listing.data && (
                 <div className="overflow-x-auto rounded-lg border border-line">
-                    <table className="w-full text-left text-sm">
+                    <table className="table-stack w-full text-left text-sm">
                         <thead className="bg-surface text-xs uppercase tracking-wide text-fg-muted">
                             <tr>
                                 <th className="px-4 py-2 font-medium">Name</th>
@@ -64,8 +64,8 @@ function DirectoryView({ containerId, path }: { containerId: string; path: strin
                                             </span>
                                         )}
                                     </td>
-                                    <td className="px-4 py-2 text-fg-muted">{entry.type === "DIRECTORY" ? "–" : formatSize(entry.size)}</td>
-                                    <td className="px-4 py-2 text-fg-muted">{formatDateTime(entry.modifiedAt)}</td>
+                                    <td data-label="Size" className="px-4 py-2 text-fg-muted">{entry.type === "DIRECTORY" ? "–" : formatSize(entry.size)}</td>
+                                    <td data-label="Modified" className="px-4 py-2 text-fg-muted">{formatDateTime(entry.modifiedAt)}</td>
                                 </tr>
                             ))}
                             {listing.data.entries.length === 0 && (

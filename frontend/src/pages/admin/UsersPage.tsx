@@ -67,7 +67,7 @@ export function UsersPage() {
         <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <h2 className="text-lg font-semibold text-fg-strong">Users</h2>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                     <RefreshButton onRefresh={() => void users.reload()} loading={users.loading} lastUpdated={users.lastUpdated} />
                     <button type="button" onClick={() => setDialog({ type: "create" })} className={buttonStyles.primary}>
                         Create user
@@ -81,7 +81,7 @@ export function UsersPage() {
 
             {users.data && (
                 <div className="overflow-x-auto rounded-lg border border-line">
-                    <table className="w-full text-left text-sm">
+                    <table className="table-stack w-full text-left text-sm">
                         <thead className="bg-surface text-xs uppercase tracking-wide text-fg-muted">
                             <tr>
                                 <th className="px-4 py-3 font-medium">Username</th>
@@ -99,10 +99,10 @@ export function UsersPage() {
                                         {user.username}
                                         {isSelf(user) && <span className="ml-2 text-xs text-fg-muted">(you)</span>}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td data-label="Role" className="px-4 py-3">
                                         {user.role?.name ?? <span className="text-danger-fg">missing role</span>}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td data-label="Status" className="px-4 py-3">
                                         <span
                                             className={`rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${
                                                 user.active
@@ -118,8 +118,8 @@ export function UsersPage() {
                                             </span>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3 text-fg-muted">{formatDateTime(user.lastLoginAt)}</td>
-                                    <td className="px-4 py-3 text-fg-muted">{formatDateTime(user.createdAt)}</td>
+                                    <td data-label="Last login" className="px-4 py-3 text-fg-muted">{formatDateTime(user.lastLoginAt)}</td>
+                                    <td data-label="Created" className="px-4 py-3 text-fg-muted">{formatDateTime(user.createdAt)}</td>
                                     <td className="px-4 py-3">
                                         {mayManage(user) ? (
                                             <div className="flex flex-wrap gap-2">
@@ -352,7 +352,7 @@ function UserFormModal({ user, isSelf, roles, mayAssignAdmin, onSaved, onClose }
                     </label>
                 )}
 
-                <div className="mt-2 flex justify-end gap-3">
+                <div className="mt-2 flex flex-wrap justify-end gap-3">
                     <button type="button" onClick={onClose} className={buttonStyles.secondary}>
                         Cancel
                     </button>

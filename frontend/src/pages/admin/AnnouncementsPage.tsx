@@ -66,7 +66,7 @@ export function AnnouncementsPage() {
                         Active announcements are shown on the dashboard within their optional time window.
                     </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                     <RefreshButton
                         onRefresh={() => void announcements.reload()}
                         loading={announcements.loading}
@@ -84,7 +84,7 @@ export function AnnouncementsPage() {
 
             {announcements.data && (
                 <div className="overflow-x-auto rounded-lg border border-line">
-                    <table className="w-full text-left text-sm">
+                    <table className="table-stack w-full text-left text-sm">
                         <thead className="bg-surface text-xs uppercase tracking-wide text-fg-muted">
                             <tr>
                                 <th className="px-4 py-3 font-medium">Title</th>
@@ -98,26 +98,26 @@ export function AnnouncementsPage() {
                         <tbody className="divide-y divide-line">
                             {announcements.data.map((announcement) => (
                                 <tr key={announcement.id} className="hover:bg-surface/60">
-                                    <td className="max-w-xs px-4 py-3">
+                                    <td className="px-4 py-3 md:max-w-xs">
                                         <span className="font-medium">{announcement.title}</span>
-                                        <p className="truncate text-xs text-fg-muted" title={announcement.message}>
+                                        <p className="text-xs text-fg-muted md:truncate" title={announcement.message}>
                                             {announcement.message}
                                         </p>
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td data-label="Status" className="px-4 py-3">
                                         <span
                                             className={`rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${STATUS_STYLES[announcement.status].className}`}
                                         >
                                             {STATUS_STYLES[announcement.status].label}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-3 text-fg-muted">
+                                    <td data-label="Shown from" className="px-4 py-3 text-fg-muted">
                                         {announcement.startsAt ? formatDateTime(announcement.startsAt) : "immediately"}
                                     </td>
-                                    <td className="px-4 py-3 text-fg-muted">
+                                    <td data-label="Shown until" className="px-4 py-3 text-fg-muted">
                                         {announcement.endsAt ? formatDateTime(announcement.endsAt) : "no end"}
                                     </td>
-                                    <td className="px-4 py-3 text-fg-muted">
+                                    <td data-label="Last changed" className="px-4 py-3 text-fg-muted">
                                         {formatDateTime(announcement.updatedAt)}
                                         <span className="block text-xs">by {announcement.updatedBy}</span>
                                     </td>
@@ -289,7 +289,7 @@ function AnnouncementFormModal({ announcement, onSaved, onClose }: AnnouncementF
                     Active
                 </label>
 
-                <div className="mt-2 flex justify-end gap-3">
+                <div className="mt-2 flex flex-wrap justify-end gap-3">
                     <button type="button" onClick={onClose} className={buttonStyles.secondary}>
                         Cancel
                     </button>

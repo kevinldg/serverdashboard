@@ -40,8 +40,8 @@ function ContainerDetailsView({ id }: { id: string }) {
                     ← Dashboard
                 </Link>
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-2xl font-semibold text-fg-strong">{data?.name ?? id}</h1>
+                    <div className="flex min-w-0 items-center gap-3">
+                        <h1 className="text-2xl font-semibold wrap-break-word text-fg-strong">{data?.name ?? id}</h1>
                         {data && <StateBadge state={data.state} />}
                     </div>
                     <RefreshButton onRefresh={() => void reload()} loading={loading} lastUpdated={lastUpdated} />
@@ -150,10 +150,10 @@ function StorageSection({ container }: { container: ContainerDetails }) {
                 <Table headers={["Type", "Source", "Container path", "Access"]}>
                     {container.mounts.map((mount, index) => (
                         <tr key={index}>
-                            <td className="px-4 py-2 capitalize">{mount.type}</td>
-                            <td className="px-4 py-2 font-mono text-xs break-all">{mount.name ?? mount.source ?? "–"}</td>
-                            <td className="px-4 py-2 font-mono text-xs break-all">{mount.destination ?? "–"}</td>
-                            <td className="px-4 py-2">{mount.readOnly ? "read-only" : "read/write"}</td>
+                            <td data-label="Type" className="px-4 py-2 capitalize">{mount.type}</td>
+                            <td data-label="Source" className="px-4 py-2 font-mono text-xs break-all">{mount.name ?? mount.source ?? "–"}</td>
+                            <td data-label="Container path" className="px-4 py-2 font-mono text-xs break-all">{mount.destination ?? "–"}</td>
+                            <td data-label="Access" className="px-4 py-2">{mount.readOnly ? "read-only" : "read/write"}</td>
                         </tr>
                     ))}
                 </Table>
@@ -204,8 +204,8 @@ function ConfigurationSection({ container }: { container: ContainerDetails }) {
                         <Table headers={["Name", "Value"]}>
                             {environment.map((variable, index) => (
                                 <tr key={index}>
-                                    <td className="px-4 py-2 font-mono text-xs">{variable.name}</td>
-                                    <td className="px-4 py-2 font-mono text-xs break-all">{variable.value}</td>
+                                    <td data-label="Name" className="px-4 py-2 font-mono text-xs">{variable.name}</td>
+                                    <td data-label="Value" className="px-4 py-2 font-mono text-xs break-all">{variable.value}</td>
                                 </tr>
                             ))}
                         </Table>
@@ -221,8 +221,8 @@ function ConfigurationSection({ container }: { container: ContainerDetails }) {
                             <Table headers={["Label", "Value"]}>
                                 {labelEntries.map(([key, value]) => (
                                     <tr key={key}>
-                                        <td className="px-4 py-2 font-mono text-xs break-all">{key}</td>
-                                        <td className="px-4 py-2 font-mono text-xs break-all">{value}</td>
+                                        <td data-label="Label" className="px-4 py-2 font-mono text-xs break-all">{key}</td>
+                                        <td data-label="Value" className="px-4 py-2 font-mono text-xs break-all">{value}</td>
                                     </tr>
                                 ))}
                             </Table>
@@ -325,7 +325,7 @@ function ContainerLogs({ containerId, tail }: { containerId: string; tail: numbe
     return (
         <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-3 text-sm">
+                <div className="flex flex-wrap items-center gap-3 text-sm">
                     <button
                         type="button"
                         role="switch"
@@ -358,7 +358,7 @@ function ContainerLogs({ containerId, tail }: { containerId: string; tail: numbe
                         const element = event.currentTarget;
                         stickToBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 24;
                     }}
-                    className="max-h-[32rem] overflow-auto rounded-md border border-line bg-page p-3 font-mono text-xs leading-relaxed"
+                    className="max-h-[60vh] overflow-auto rounded-md sm:max-h-[32rem] border border-line bg-page p-3 font-mono text-xs leading-relaxed"
                 >
                     {lines.length === 0 && <span className="text-fg-subtle">No log output.</span>}
                     {lines.map((line, index) => (
@@ -378,7 +378,7 @@ function ContainerLogs({ containerId, tail }: { containerId: string; tail: numbe
 
 function Section({ title, actions, children }: { title: string; actions?: ReactNode; children: ReactNode }) {
     return (
-        <section className="rounded-lg border border-line bg-surface p-5">
+        <section className="rounded-lg border border-line bg-surface p-4 sm:p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-lg font-semibold text-fg-strong">{title}</h2>
                 {actions}
@@ -400,7 +400,7 @@ function Item({ label, children }: { label: string; children: ReactNode }) {
 function Table({ headers, children }: { headers: string[]; children: ReactNode }) {
     return (
         <div className="overflow-x-auto rounded-md border border-line">
-            <table className="w-full text-left text-sm">
+            <table className="table-stack w-full text-left text-sm">
                 <thead className="bg-page/60 text-xs uppercase tracking-wide text-fg-muted">
                     <tr>
                         {headers.map((header) => (

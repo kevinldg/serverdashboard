@@ -33,7 +33,7 @@ export function Modal({ title, children, onClose, initialFocusRef, size = "md" }
                 event.preventDefault();
                 onClose();
             }}
-            className={`m-auto w-[calc(100%-2rem)] ${size === "xl" ? "max-w-6xl" : size === "lg" ? "max-w-lg" : "max-w-md"} rounded-lg border border-line-strong bg-surface p-6 text-fg shadow-xl backdrop:bg-black/70`}
+            className={`m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] overflow-y-auto ${size === "xl" ? "max-w-6xl" : size === "lg" ? "max-w-lg" : "max-w-md"} rounded-lg border border-line-strong bg-surface p-4 text-fg shadow-xl backdrop:bg-black/70 sm:p-6`}
         >
             <h2 id="modal-title" className="text-lg font-semibold text-fg-strong">
                 {title}

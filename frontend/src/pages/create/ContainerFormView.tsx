@@ -70,7 +70,7 @@ export function ContainerFormView({ form, options, errors, onChange }: Container
                          error={errors[`ports[${index}].hostPort`] ?? errors[`ports[${index}].containerPort`]}>
                         <input className={`${inputClass} w-28`} inputMode="numeric" placeholder="Host" aria-label="Host port"
                                value={port.hostPort} onChange={(event) => updateRow("ports", index, { hostPort: event.target.value })} />
-                        <span className="text-fg-subtle">→</span>
+                        <span className="text-fg-subtle max-sm:hidden">→</span>
                         <input className={`${inputClass} w-28`} inputMode="numeric" placeholder="Container" aria-label="Container port"
                                value={port.containerPort} onChange={(event) => updateRow("ports", index, { containerPort: event.target.value })} />
                         <select className={`${inputClass} w-24`} aria-label="Protocol" value={port.protocol}
@@ -104,7 +104,7 @@ export function ContainerFormView({ form, options, errors, onChange }: Container
                         <input className={`${inputClass} font-mono`} aria-label="Source"
                                placeholder={mount.type === "VOLUME" ? "volume name" : `${options.bindMountRoot ?? ""}/…`}
                                value={mount.source} onChange={(event) => updateRow("mounts", index, { source: event.target.value })} />
-                        <span className="text-fg-subtle">→</span>
+                        <span className="text-fg-subtle max-sm:hidden">→</span>
                         <input className={`${inputClass} font-mono`} aria-label="Container path" placeholder="/data"
                                value={mount.target} onChange={(event) => updateRow("mounts", index, { target: event.target.value })} />
                         <label className="flex shrink-0 items-center gap-1 text-xs text-fg-muted">
@@ -127,7 +127,7 @@ export function ContainerFormView({ form, options, errors, onChange }: Container
                          error={errors[`environment[${index}].name`] ?? errors[`environment[${index}].value`]}>
                         <input className={`${inputClass} w-56 font-mono`} aria-label="Name" placeholder="NAME"
                                value={variable.name} onChange={(event) => updateRow("environment", index, { name: event.target.value })} />
-                        <span className="text-fg-subtle">=</span>
+                        <span className="text-fg-subtle max-sm:hidden">=</span>
                         {variable.options && variable.options.length > 0 ? (
                             <select className={`${inputClass} font-mono`} aria-label="Value" value={variable.value}
                                     onChange={(event) => updateRow("environment", index, { value: event.target.value })}>
@@ -206,7 +206,7 @@ function FormSection({ title, description, children, onAdd, addLabel }: {
     addLabel?: string;
 }) {
     return (
-        <section className="rounded-lg border border-line bg-surface p-5">
+        <section className="rounded-lg border border-line bg-surface p-4 sm:p-5">
             <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
                 <div>
                     <h2 className="font-semibold text-fg-strong">{title}</h2>
@@ -241,9 +241,10 @@ function Row({ children, onRemove, description, error }: {
 }) {
     return (
         <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
-                {children}
-                <button type="button" onClick={onRemove} aria-label="Remove" className="shrink-0 px-2 text-fg-subtle hover:text-danger-fg-vivid">
+            {/* The fields wrap onto several lines on small screens */}
+            <div className="flex items-start gap-2 sm:items-center">
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:flex-nowrap">{children}</div>
+                <button type="button" onClick={onRemove} aria-label="Remove" className="shrink-0 px-2 py-1.5 text-fg-subtle hover:text-danger-fg-vivid">
                     ✕
                 </button>
             </div>

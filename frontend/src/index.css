@@ -68,3 +68,43 @@
 body {
     @apply bg-page text-fg antialiased;
 }
+
+/*
+ * Tables with the class `table-stack` turn into a list of cards below the `md` breakpoint, so every column stays
+ * visible without horizontal scrolling. A cell's `data-label` (the column header) is shown in front of its value;
+ * cells without one (title, actions, empty state) use the full width.
+ * Not inside a layer, so these rules win over the cells' padding utilities.
+ */
+@media (width < 48rem) {
+    .table-stack thead {
+        display: none;
+    }
+
+    .table-stack,
+    .table-stack :is(tbody, tr, td) {
+        display: block;
+    }
+
+    .table-stack tr {
+        @apply px-4 py-3;
+    }
+
+    .table-stack td {
+        @apply px-0 py-1;
+        overflow-wrap: anywhere;
+    }
+
+    /* Actions below the values */
+    .table-stack td:not([data-label], :first-child) {
+        @apply pt-2;
+    }
+
+    .table-stack td[data-label] {
+        @apply relative pl-32;
+    }
+
+    .table-stack td[data-label]::before {
+        content: attr(data-label);
+        @apply absolute top-1.5 left-0 w-28 font-sans text-xs font-medium tracking-wide text-fg-muted uppercase;
+    }
+}

@@ -32,7 +32,7 @@ export function DashboardPage() {
         <div className="flex flex-col gap-6">
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <h1 className="text-2xl font-semibold text-fg-strong">Dashboard</h1>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                     <RefreshButton
                         onRefresh={() => {
                             void reload();
@@ -69,7 +69,7 @@ export function DashboardPage() {
                     </label>
 
                     <div className="overflow-x-auto rounded-lg border border-line">
-                        <table className="w-full text-left text-sm">
+                        <table className="table-stack w-full text-left text-sm">
                             <thead className="bg-surface text-xs uppercase tracking-wide text-fg-muted">
                                 <tr>
                                     <th className="px-4 py-3 font-medium">Name</th>
@@ -102,11 +102,11 @@ export function DashboardPage() {
                                                 </span>
                                             )}
                                         </td>
-                                        <td className="px-4 py-3 font-mono text-xs text-fg-secondary">{container.image}</td>
-                                        <td className="px-4 py-3">
+                                        <td data-label="Image" className="px-4 py-3 font-mono text-xs text-fg-secondary">{container.image}</td>
+                                        <td data-label="State" className="px-4 py-3">
                                             <StateBadge state={container.state} />
                                         </td>
-                                        <td className="px-4 py-3 text-fg-muted">{container.status}</td>
+                                        <td data-label="Status" className="px-4 py-3 text-fg-muted">{container.status}</td>
                                         {canRunActions && (
                                             <td className="px-4 py-3">
                                                 <ContainerActions

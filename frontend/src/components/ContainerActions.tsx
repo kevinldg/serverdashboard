@@ -116,7 +116,7 @@ export function ContainerActions({ container, mounts = [], variant, onCompleted,
                         // Start is not disruptive and runs directly; everything else asks for confirmation.
                         onClick={() => (action === "start" ? void run(action) : setConfirming(action))}
                         className={`inline-flex items-center gap-1.5 rounded-md border font-medium disabled:cursor-not-allowed disabled:opacity-50 ${
-                            variant === "row" ? "px-2.5 py-1 text-xs" : "px-3 py-1.5 text-sm"
+                            variant === "row" ? "px-2.5 py-1 text-xs pointer-coarse:py-1.5" : "px-3 py-1.5 text-sm"
                         } ${
                             definition.destructive
                                 ? "border-danger-line text-danger-fg enabled:hover:bg-danger-soft"

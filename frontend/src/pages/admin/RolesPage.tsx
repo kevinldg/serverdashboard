@@ -60,7 +60,7 @@ export function RolesPage() {
                     <h2 className="text-lg font-semibold text-fg-strong">Roles & permissions</h2>
                     <p className="text-sm text-fg-muted">Changes apply to users with the role on their next request.</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                     <RefreshButton onRefresh={() => void roles.reload()} loading={roles.loading} lastUpdated={roles.lastUpdated} />
                     <button type="button" onClick={() => setDialog({ type: "create" })} className={buttonStyles.primary}>
                         Create role
@@ -75,7 +75,7 @@ export function RolesPage() {
 
             {roles.data && (
                 <div className="overflow-x-auto rounded-lg border border-line">
-                    <table className="w-full text-left text-sm">
+                    <table className="table-stack w-full text-left text-sm">
                         <thead className="bg-surface text-xs uppercase tracking-wide text-fg-muted">
                             <tr>
                                 <th className="px-4 py-3 font-medium">Role</th>
@@ -95,10 +95,10 @@ export function RolesPage() {
                                             <Badge className="bg-raised text-fg-secondary ring-line-strong">built-in</Badge>
                                         ) : null}
                                     </td>
-                                    <td className="px-4 py-3 text-fg-secondary">
+                                    <td data-label="Permissions" className="px-4 py-3 text-fg-secondary">
                                         {role.admin ? "All" : `${role.permissions.length} of ${permissions.data?.length ?? "–"}`}
                                     </td>
-                                    <td className="px-4 py-3 text-fg-secondary">{role.userCount}</td>
+                                    <td data-label="Users" className="px-4 py-3 text-fg-secondary">{role.userCount}</td>
                                     <td className="px-4 py-3">
                                         <div className="flex flex-wrap gap-2">
                                             <RowButton onClick={() => setDialog({ type: "edit", role })}>
@@ -274,7 +274,7 @@ function RoleEditorModal({ role, permissions, currentUser, onSaved, onClose }: R
                     ))}
                 </div>
 
-                <div className="mt-2 flex items-center justify-between gap-3">
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
                     <span className="text-xs text-fg-muted">
                         {readOnly ? "All" : selected.size} of {permissions.length} permissions
                     </span>

@@ -19,13 +19,14 @@ export function AdminLayout() {
     return (
         <div className="flex flex-col gap-6">
             <h1 className="text-2xl font-semibold text-fg-strong">Administration</h1>
-            <nav className="flex gap-1 border-b border-line">
+            {/* Scrolls sideways when the tabs do not fit; the bottom line is a shadow so overflow does not clip the active tab's border */}
+            <nav className="flex gap-1 overflow-x-auto shadow-[inset_0_-1px_0_var(--color-line)]">
                 {tabs.map((tab) => (
                     <NavLink
                         key={tab.path}
                         to={tab.path}
                         className={({ isActive }) =>
-                            `-mb-px border-b-2 px-4 py-2 text-sm font-medium ${
+                            `shrink-0 border-b-2 px-4 py-2 text-sm font-medium whitespace-nowrap ${
                                 isActive ? "border-sky-500 text-fg-strong" : "border-transparent text-fg-muted hover:text-fg"
                             }`
                         }

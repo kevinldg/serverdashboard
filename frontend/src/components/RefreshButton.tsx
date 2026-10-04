@@ -8,7 +8,7 @@ interface RefreshButtonProps {
 
 export function RefreshButton({ onRefresh, loading, lastUpdated }: RefreshButtonProps) {
     return (
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
             {lastUpdated && (
                 <span className="text-xs text-fg-muted">Last updated: {formatTime(lastUpdated)}</span>
             )}

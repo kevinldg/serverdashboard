@@ -40,7 +40,7 @@ function FileLoader({ containerId, path, onReload }: { containerId: string; path
                 <Link to={`/containers/${containerId}/files?path=${encodeURIComponent(parent)}`} className="text-sm text-accent-fg-vivid hover:underline">
                     Folder
                 </Link>
-                <h1 className="mt-2 font-mono text-xl font-semibold text-fg-strong">{path}</h1>
+                <h1 className="mt-2 font-mono text-xl font-semibold wrap-break-word text-fg-strong">{path}</h1>
             </div>
             {file.error !== null && <ErrorAlert error={file.error} />}
             {!file.data && file.loading && <p className="text-fg-muted">Loading…</p>}
@@ -114,7 +114,7 @@ function FileEditor({ containerId, file, onReload }: { containerId: string; file
             {!canEdit && <Alert variant="info">Read-only: you do not have permission to edit configuration files.</Alert>}
             {error !== null && <ErrorAlert error={error} />}
             {conflict && (
-                <div className="flex items-center gap-3 text-sm">
+                <div className="flex flex-wrap items-center gap-3 text-sm">
                     <button type="button" onClick={onReload} className={buttonStyles.secondary}>
                         Reload the file
                     </button>
@@ -139,7 +139,7 @@ function FileEditor({ containerId, file, onReload }: { containerId: string; file
                     {dirty ? <span className="text-warning-fg">Unsaved changes</span> : "No unsaved changes"}
                     {" · "}last modified {formatDateTime(file.modifiedAt)}
                 </span>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     {backup && (
                         <button type="button" onClick={() => setComparing(true)} className={buttonStyles.secondary}>
                             Previous version
@@ -221,7 +221,7 @@ function PreviousVersionModal({ containerId, path, current, canEdit, onLoad, onC
                             options={{ readOnly: true, renderSideBySide: true, minimap: { enabled: false } }}
                         />
                     </div>
-                    <div className="flex justify-end gap-3">
+                    <div className="flex flex-wrap justify-end gap-3">
                         <button type="button" onClick={onClose} className={buttonStyles.secondary}>
                             Close
                         </button>

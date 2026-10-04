@@ -22,7 +22,7 @@ export function ConfirmModal({ title, children, confirmLabel, destructive = fals
     return (
         <Modal title={title} onClose={onCancel} initialFocusRef={cancelRef}>
             <div className="flex flex-col gap-3 text-sm text-fg-secondary">{children}</div>
-            <div className="mt-6 flex justify-end gap-3">
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
                 <button ref={cancelRef} type="button" onClick={onCancel} className={buttonStyles.secondary}>
                     Cancel
                 </button>

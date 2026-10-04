@@ -138,7 +138,7 @@ function ClassificationModal({ container, onSaved, onClose }: {
                     (e.g. after an image update). It takes precedence over automatic detection.
                 </p>
 
-                <div className="mt-2 flex justify-end gap-3">
+                <div className="mt-2 flex flex-wrap justify-end gap-3">
                     <button type="button" onClick={onClose} className={buttonStyles.secondary}>
                         Cancel
                     </button>

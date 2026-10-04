@@ -64,7 +64,7 @@ export function AccountPage() {
                 <h2 className="text-lg font-semibold text-fg-strong">Change password</h2>
                 <form
                     onSubmit={handleSubmit}
-                    className="mt-4 flex flex-col gap-4 rounded-lg border border-line bg-surface p-6"
+                    className="mt-4 flex flex-col gap-4 rounded-lg border border-line bg-surface p-4 sm:p-6"
                 >
                     {error && <Alert variant="error">{error}</Alert>}
                     {success && <Alert variant="success">Your password has been changed.</Alert>}

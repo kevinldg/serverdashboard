@@ -80,9 +80,9 @@ export function SystemPage() {
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
     return (
-        <section className="rounded-lg border border-line bg-surface p-5">
+        <section className="rounded-lg border border-line bg-surface p-4 sm:p-5">
             <h3 className="mb-3 font-semibold text-fg-strong">{title}</h3>
-            <dl className="grid grid-cols-[9rem_1fr] gap-y-2 text-sm">{children}</dl>
+            <dl className="grid grid-cols-[9rem_minmax(0,1fr)] gap-y-2 text-sm">{children}</dl>
         </section>
     );
 }

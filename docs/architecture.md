@@ -210,6 +210,18 @@ Decisions that complement `requirements.md`. Update this file when a decision ch
   (`localStorage`, per device); `public/theme-init.js` applies it before the page renders.
 - The configuration file editor uses Monaco's `vs` / `vs-dark` theme accordingly.
 
+## Mobile Layout
+
+- Small screens are covered with Tailwind breakpoints only; the main breakpoint is `md` (768 px). The desktop layout
+  stays unchanged.
+- Below `md`, the header shows the logo, the theme switch and a menu button; the menu holds the navigation, the account
+  link and "Log out".
+- Tables use the class `table-stack` (defined in `frontend/src/index.css`): below `md` every row becomes a card and each
+  cell shows its column name from `data-label`, so all information stays visible without horizontal scrolling. Title
+  and action cells have no `data-label` and use the full width. New tables should follow this pattern.
+- The admin tabs scroll sideways, button rows wrap, modals scroll within the screen height, and row buttons are a bit
+  taller on touch screens (`pointer-coarse:`).
+
 ## Live Updates
 
 - Pages load data once and are refreshed manually (no polling).
