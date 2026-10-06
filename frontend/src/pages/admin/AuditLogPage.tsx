@@ -18,7 +18,7 @@ const PAGE_SIZE = 50;
 const CATEGORY_LABELS: Record<AuditCategory, string> = {
     AUTHENTICATION: "Login & account",
     CONTAINER: "Containers",
-    GAME_SERVER: "Game servers",
+    GAME_SERVER: "Classification",
     CONFIG_FILE: "Configuration files",
     USER: "Users",
     ROLE: "Roles",

@@ -51,6 +51,29 @@
     --color-game-line: light-dark(var(--color-violet-200), var(--color-violet-800));
     --color-game-fg: light-dark(var(--color-violet-700), var(--color-violet-300));
     --color-game-fg-vivid: light-dark(var(--color-violet-600), var(--color-violet-400));
+
+    /* Container categories (badge colors selectable in the admin area) */
+    --color-cat-blue-soft: light-dark(var(--color-blue-50), var(--color-blue-950));
+    --color-cat-blue-line: light-dark(var(--color-blue-200), var(--color-blue-800));
+    --color-cat-blue-fg: light-dark(var(--color-blue-700), var(--color-blue-300));
+    --color-cat-green-soft: light-dark(var(--color-green-50), var(--color-green-950));
+    --color-cat-green-line: light-dark(var(--color-green-200), var(--color-green-800));
+    --color-cat-green-fg: light-dark(var(--color-green-700), var(--color-green-300));
+    --color-cat-amber-soft: light-dark(var(--color-amber-50), var(--color-amber-950));
+    --color-cat-amber-line: light-dark(var(--color-amber-200), var(--color-amber-800));
+    --color-cat-amber-fg: light-dark(var(--color-amber-700), var(--color-amber-300));
+    --color-cat-red-soft: light-dark(var(--color-rose-50), var(--color-rose-950));
+    --color-cat-red-line: light-dark(var(--color-rose-200), var(--color-rose-800));
+    --color-cat-red-fg: light-dark(var(--color-rose-700), var(--color-rose-300));
+    --color-cat-purple-soft: light-dark(var(--color-fuchsia-50), var(--color-fuchsia-950));
+    --color-cat-purple-line: light-dark(var(--color-fuchsia-200), var(--color-fuchsia-800));
+    --color-cat-purple-fg: light-dark(var(--color-fuchsia-700), var(--color-fuchsia-300));
+    --color-cat-teal-soft: light-dark(var(--color-teal-50), var(--color-teal-950));
+    --color-cat-teal-line: light-dark(var(--color-teal-200), var(--color-teal-800));
+    --color-cat-teal-fg: light-dark(var(--color-teal-700), var(--color-teal-300));
+    --color-cat-gray-soft: light-dark(var(--color-slate-50), var(--color-slate-950));
+    --color-cat-gray-line: light-dark(var(--color-slate-200), var(--color-slate-800));
+    --color-cat-gray-fg: light-dark(var(--color-slate-700), var(--color-slate-300));
 }
 
 :root {

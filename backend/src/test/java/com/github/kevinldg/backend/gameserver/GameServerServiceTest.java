@@ -1,7 +1,12 @@
 package com.github.kevinldg.backend.gameserver;
 
 import com.github.kevinldg.backend.audit.AuditService;
+import com.github.kevinldg.backend.audit.AuditEvent;
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
+import com.github.kevinldg.backend.category.CategoryColor;
+import com.github.kevinldg.backend.category.CategoryInfo;
+import com.github.kevinldg.backend.category.ContainerCategory;
+import com.github.kevinldg.backend.category.ContainerCategoryRepository;
 import com.github.kevinldg.backend.common.ApiException;
 import com.github.kevinldg.backend.gameserver.ClassificationRequest.Mode;
 import com.github.kevinldg.backend.gameserver.GameServerService.ContainerRef;
@@ -26,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyIterable;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -43,6 +49,7 @@ class GameServerServiceTest {
     private static final ContainerRef PORTAINER = new ContainerRef("portainer", "portainer/portainer-ce:2.21.4", Map.of());
 
     private final ContainerClassificationRepository repository = mock(ContainerClassificationRepository.class);
+    private final ContainerCategoryRepository categoryRepository = mock(ContainerCategoryRepository.class);
     private final AuthenticatedUser admin = new AuthenticatedUser("a", "kevin", null, true, true, 0, Set.of());
     private GameServerService service;
 
@@ -50,7 +57,7 @@ class GameServerServiceTest {
     void setUp() {
         service = new GameServerService(
                 List.of(new SatisfactoryProfile(), new MinecraftJavaProfile(), new MinecraftBedrockProfile()),
-                repository, auditService, Clock.fixed(Instant.parse("2026-10-03T12:00:00Z"), ZoneOffset.UTC));
+                repository, categoryRepository, auditService, Clock.fixed(Instant.parse("2026-10-03T12:00:00Z"), ZoneOffset.UTC));
         when(repository.findById(any())).thenReturn(Optional.empty());
         when(repository.findAllById(anyIterable())).thenReturn(List.of());
     }
@@ -135,7 +142,7 @@ class GameServerServiceTest {
 
     @Test
     void classifyStoresManualClassification() {
-        service.classify("teamspeak", new ClassificationRequest(Mode.GAME_SERVER, null), admin);
+        service.classify("teamspeak", new ClassificationRequest(Mode.GAME_SERVER, null, null), admin);
 
         ArgumentCaptor<ContainerClassification> captor = ArgumentCaptor.forClass(ContainerClassification.class);
         verify(repository).save(captor.capture());
@@ -147,7 +154,7 @@ class GameServerServiceTest {
 
     @Test
     void notGameServerIgnoresProfile() {
-        service.classify("x", new ClassificationRequest(Mode.NOT_GAME_SERVER, "minecraft-java"), admin);
+        service.classify("x", new ClassificationRequest(Mode.NOT_GAME_SERVER, "minecraft-java", null), admin);
 
         ArgumentCaptor<ContainerClassification> captor = ArgumentCaptor.forClass(ContainerClassification.class);
         verify(repository).save(captor.capture());
@@ -157,7 +164,7 @@ class GameServerServiceTest {
 
     @Test
     void automaticRemovesManualClassification() {
-        service.classify("teamspeak", new ClassificationRequest(Mode.AUTOMATIC, null), admin);
+        service.classify("teamspeak", new ClassificationRequest(Mode.AUTOMATIC, null, null), admin);
 
         verify(repository).deleteById("teamspeak");
         verify(repository, never()).save(any());
@@ -165,9 +172,85 @@ class GameServerServiceTest {
 
     @Test
     void unknownProfileIsRejected() {
-        assertThatThrownBy(() -> service.classify("x", new ClassificationRequest(Mode.GAME_SERVER, "valheim"), admin))
+        assertThatThrownBy(() -> service.classify("x", new ClassificationRequest(Mode.GAME_SERVER, "valheim", null), admin))
                 .isInstanceOfSatisfying(ApiException.class, ex -> assertThat(ex.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST));
         verify(repository, never()).save(any());
+    }
+
+    @Test
+    void manualCategoryOverridesAutomaticDetection() {
+        when(categoryRepository.findById("cat-1")).thenReturn(Optional.of(category("cat-1", "Communication")));
+        when(repository.findById("minecraft-server01")).thenReturn(Optional.of(withCategory("minecraft-server01", "cat-1")));
+
+        assertThat(service.detect(MINECRAFT)).isEqualTo(new GameServerStatus(false, null, null, Source.MANUAL,
+                new CategoryInfo("cat-1", "Communication", CategoryColor.BLUE)));
+    }
+
+    @Test
+    void classificationWithDeletedCategoryFallsBackToAutomaticDetection() {
+        when(categoryRepository.findById("gone")).thenReturn(Optional.empty());
+        when(repository.findById("minecraft-server01")).thenReturn(Optional.of(withCategory("minecraft-server01", "gone")));
+
+        assertThat(service.detect(MINECRAFT).source()).isEqualTo(Source.IMAGE);
+    }
+
+    @Test
+    void detectAllLoadsCategoriesOnce() {
+        when(repository.findAllById(anyIterable())).thenReturn(List.of(
+                withCategory("teamspeak", "cat-1"), withCategory("portainer", "cat-2"), withCategory("minecraft-server01", "gone")));
+        when(categoryRepository.findAllById(anyIterable()))
+                .thenReturn(List.of(category("cat-1", "Communication"), category("cat-2", "System")));
+
+        Map<String, GameServerStatus> result = service.detectAll(List.of(MINECRAFT, TEAMSPEAK, PORTAINER));
+
+        assertThat(result.get("teamspeak").category().name()).isEqualTo("Communication");
+        assertThat(result.get("portainer").category().name()).isEqualTo("System");
+        assertThat(result.get("minecraft-server01").source()).isEqualTo(Source.IMAGE);
+        verify(categoryRepository).findAllById(anyIterable());
+        verify(categoryRepository, never()).findById(any());
+    }
+
+    @Test
+    void detectAllSkipsCategoryLookupWithoutCategories() {
+        service.detectAll(List.of(MINECRAFT, TEAMSPEAK));
+
+        verify(categoryRepository, never()).findAllById(anyIterable());
+    }
+
+    @Test
+    void classifyStoresCategory() {
+        when(categoryRepository.findById("cat-1")).thenReturn(Optional.of(category("cat-1", "Communication")));
+
+        service.classify("teamspeak", new ClassificationRequest(Mode.CATEGORY, "minecraft-java", "cat-1"), admin);
+
+        ArgumentCaptor<ContainerClassification> captor = ArgumentCaptor.forClass(ContainerClassification.class);
+        verify(repository).save(captor.capture());
+        assertThat(captor.getValue().isGameServer()).isFalse();
+        assertThat(captor.getValue().getProfileId()).isNull();
+        assertThat(captor.getValue().getCategoryId()).isEqualTo("cat-1");
+        verify(auditService).record(argThat((AuditEvent event) ->
+                event.summary().equals("Classified container 'teamspeak' as category 'Communication'")));
+    }
+
+    @Test
+    void unknownOrMissingCategoryIsRejected() {
+        when(categoryRepository.findById("gone")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.classify("x", new ClassificationRequest(Mode.CATEGORY, null, "gone"), admin))
+                .isInstanceOfSatisfying(ApiException.class, ex -> assertThat(ex.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST));
+        assertThatThrownBy(() -> service.classify("x", new ClassificationRequest(Mode.CATEGORY, null, null), admin))
+                .isInstanceOfSatisfying(ApiException.class, ex -> assertThat(ex.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST));
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void gameServerClassificationIgnoresCategory() {
+        service.classify("x", new ClassificationRequest(Mode.GAME_SERVER, null, "cat-1"), admin);
+
+        ArgumentCaptor<ContainerClassification> captor = ArgumentCaptor.forClass(ContainerClassification.class);
+        verify(repository).save(captor.capture());
+        assertThat(captor.getValue().getCategoryId()).isNull();
+        verify(categoryRepository, never()).findById(any());
     }
 
     @Test
@@ -178,6 +261,20 @@ class GameServerServiceTest {
 
     private static ContainerRef withLabel(ContainerRef container, String value) {
         return new ContainerRef(container.name(), container.image(), Map.of(GameServerService.LABEL, value));
+    }
+
+    private static ContainerClassification withCategory(String name, String categoryId) {
+        ContainerClassification classification = classification(name, false, null);
+        classification.setCategoryId(categoryId);
+        return classification;
+    }
+
+    private static ContainerCategory category(String id, String name) {
+        ContainerCategory category = new ContainerCategory();
+        category.setId(id);
+        category.setName(name);
+        category.setColor(CategoryColor.BLUE);
+        return category;
     }
 
     private static ContainerClassification classification(String name, boolean gameServer, String profileId) {

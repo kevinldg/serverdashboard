@@ -20,6 +20,7 @@ export type Permission =
     | "USER_MANAGE"
     | "ROLE_MANAGE"
     | "ANNOUNCEMENT_MANAGE"
+    | "CATEGORY_MANAGE"
     | "MAINTENANCE_MANAGE"
     | "SYSTEM_INFO_VIEW"
     | "AUDIT_LOG_VIEW";

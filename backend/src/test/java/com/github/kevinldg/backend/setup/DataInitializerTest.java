@@ -95,8 +95,8 @@ class DataInitializerTest {
         assertThat(admin.getValue().isActive()).isTrue();
         assertThat(admin.getValue().isPasswordChangeRecommended()).isTrue();
 
-        // username, role name, audit log retention
-        verify(indexOperations, times(3)).createIndex(any());
+        // username, role name, category name, audit log retention
+        verify(indexOperations, times(4)).createIndex(any());
     }
 
     @Test
@@ -108,7 +108,7 @@ class DataInitializerTest {
         initializer("admin", "initial-password").run(null);
 
         verify(indexOperations).dropIndex(DataInitializer.AUDIT_TTL_INDEX);
-        verify(indexOperations, times(3)).createIndex(any());
+        verify(indexOperations, times(4)).createIndex(any());
     }
 
     @Test

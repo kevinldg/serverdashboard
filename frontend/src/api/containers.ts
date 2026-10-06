@@ -1,3 +1,4 @@
+import type { CategoryInfo } from "./categories";
 import { apiClient } from "./client";
 
 /** Docker container state, e.g. "running", "exited", "paused", "restarting", "created", "dead". */
@@ -13,6 +14,8 @@ export interface GameServerStatus {
     /** Profile name, "Game server" for generic ones, null if not a game server. */
     profileName: string | null;
     source: GameServerSource;
+    /** Manually assigned category (then never a game server), otherwise null. */
+    category: CategoryInfo | null;
 }
 
 export interface GameServerProfile {
@@ -21,7 +24,7 @@ export interface GameServerProfile {
     imageNames: string[];
 }
 
-export type ClassificationMode = "AUTOMATIC" | "GAME_SERVER" | "NOT_GAME_SERVER";
+export type ClassificationMode = "AUTOMATIC" | "GAME_SERVER" | "CATEGORY" | "NOT_GAME_SERVER";
 
 export interface ContainerSummary {
     id: string;
@@ -176,11 +179,16 @@ export function openLogStream(id: string, handlers: LogStreamHandlers): () => vo
 }
 
 /**
- * Sets the manual game server classification (stored by container name).
- * AUTOMATIC removes it; profileId null with GAME_SERVER means a generic game server.
+ * Sets the manual classification (stored by container name).
+ * AUTOMATIC removes it; profileId null with GAME_SERVER means a generic game server; CATEGORY requires categoryId.
  */
-export async function classifyContainer(id: string, mode: ClassificationMode, profileId: string | null): Promise<void> {
-    await apiClient.put(`/containers/${encodeURIComponent(id)}/classification`, { mode, profileId });
+export async function classifyContainer(
+    id: string,
+    mode: ClassificationMode,
+    profileId: string | null,
+    categoryId: string | null,
+): Promise<void> {
+    await apiClient.put(`/containers/${encodeURIComponent(id)}/classification`, { mode, profileId, categoryId });
 }
 
 export async function listGameServerProfiles(): Promise<GameServerProfile[]> {

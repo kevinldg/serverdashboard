@@ -361,7 +361,7 @@ class ContainerServiceTest {
     @Test
     void classificationIsStoredByContainerName() throws Exception {
         stubState("abc123", "running");
-        ClassificationRequest request = new ClassificationRequest(ClassificationRequest.Mode.NOT_GAME_SERVER, null);
+        ClassificationRequest request = new ClassificationRequest(ClassificationRequest.Mode.NOT_GAME_SERVER, null, null);
         AuthenticatedUser actor = new AuthenticatedUser("u", "kevin", null, true, true, 0, Set.of());
 
         containerService.classify("abc123", request, actor);

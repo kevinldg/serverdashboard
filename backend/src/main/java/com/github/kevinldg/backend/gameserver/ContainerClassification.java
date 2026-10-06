@@ -9,7 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.Instant;
 
 /**
- * A manual game server classification, which overrides automatic detection.
+ * A manual classification (game server, category, or neither), which overrides automatic detection.
  * <p>
  * Keyed by container name, so the classification survives recreating the container (e.g. after an image update).
  */
@@ -27,6 +27,9 @@ public class ContainerClassification {
 
     /** Null for a generic game server (or if not a game server). */
     private String profileId;
+
+    /** A {@link com.github.kevinldg.backend.category.ContainerCategory}; only if not a game server. */
+    private String categoryId;
 
     private Instant updatedAt;
 

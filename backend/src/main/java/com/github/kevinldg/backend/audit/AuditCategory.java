@@ -6,6 +6,7 @@ package com.github.kevinldg.backend.audit;
 public enum AuditCategory {
     AUTHENTICATION,
     CONTAINER,
+    /** Game server classification and container categories. */
     GAME_SERVER,
     CONFIG_FILE,
     USER,

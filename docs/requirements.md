@@ -31,6 +31,7 @@ The application should provide a central web interface for managing Docker conta
 * View Container Information
 * Game Server Detection
 * Manual Game Server Classification
+* Container Categories (manually assignable, managed in the Admin Area)
 * Game Server Profiles
 * Game Server Templates
 * View and Edit Game Server Configurations
@@ -54,7 +55,7 @@ Each container should display at least:
 * Container Image
 * Container State
 * Visual indication of the current state
-* Label indicating whether the container is a game server
+* Label indicating whether the container is a game server or which category it belongs to
 * Available actions based on the user's permissions
 
 The dashboard should also provide basic container statistics, such as:
@@ -70,6 +71,7 @@ The dashboard should allow users to:
 * Start containers
 * Stop containers
 * Restart containers
+* Filter containers by classification (game servers, a category, unclassified)
 
 Only actions allowed by the user's permissions should be available.
 
@@ -169,6 +171,16 @@ Detection may use multiple criteria, such as:
 The exact detection mechanism should remain extensible.
 
 Administrators should also be able to manually classify a container as a game server or change its classification when automatic detection is incorrect.
+
+### Container Categories
+
+Containers that are not game servers can manually be assigned a category instead, such as "System" (e.g. a reverse proxy) or "Communication" (e.g. a voice server).
+
+* A container has exactly one classification: a game server, a category, or none.
+* Categories have a name and a color and are shown as a badge on the dashboard and the container details page.
+* Categories are managed (created, edited, deleted) in the Admin Area; managing them is a separate permission.
+* Deleting a category that is still assigned resets the affected containers to automatic detection.
+* Categories are only assigned manually; there is no automatic detection for them.
 
 ### Game Server Profiles
 
@@ -317,6 +329,7 @@ The Admin Area should provide access to administrative functionality, including:
 * Role management
 * Permission management
 * Announcement management
+* Container category management
 * Maintenance mode management
 * System information
 * Audit log
@@ -331,7 +344,7 @@ The Admin Area should provide an audit log of recent activities, newest first.
 
 The audit log should record:
 
-* All changes (containers, game server classification, configuration files, users, roles, announcements, maintenance mode)
+* All changes (containers, game server classification, container categories, configuration files, users, roles, announcements, maintenance mode)
 * Logins, failed logins, logouts, and password changes
 * Failed actions
 * Viewing sensitive information (environment variables, configuration files, live logs)

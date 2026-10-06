@@ -66,7 +66,7 @@ function ContainerDetailsView({ id }: { id: string }) {
             {data && lastUpdated && (
                 <>
                     <GeneralSection container={data} loadedAt={lastUpdated} />
-                    <Section title="Game server">
+                    <Section title="Classification">
                         <GameServerSection container={data} onChanged={() => void reload()} />
                     </Section>
                     {data.gameServer.gameServer && hasPermission(user, "GAMESERVER_CONFIG_VIEW") && (

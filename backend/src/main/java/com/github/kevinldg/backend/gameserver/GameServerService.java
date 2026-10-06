@@ -4,6 +4,9 @@ import com.github.kevinldg.backend.audit.AuditAction;
 import com.github.kevinldg.backend.audit.AuditEvent;
 import com.github.kevinldg.backend.audit.AuditService;
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
+import com.github.kevinldg.backend.category.CategoryInfo;
+import com.github.kevinldg.backend.category.ContainerCategory;
+import com.github.kevinldg.backend.category.ContainerCategoryRepository;
 import com.github.kevinldg.backend.common.ApiException;
 import com.github.kevinldg.backend.gameserver.GameServerStatus.Source;
 import com.github.kevinldg.backend.gameserver.profile.ContainerTemplate;
@@ -16,6 +19,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -26,6 +30,8 @@ import java.util.stream.StreamSupport;
  * Game server detection and manual classification.
  * <p>
  * Priority: manual classification, then the Docker label {@value #LABEL}, then the image name of a profile.
+ * Container categories (e.g. "System") are only assigned manually; a classification whose category no longer
+ * exists is ignored.
  * Label values: a profile ID (e.g. {@code minecraft-java}), {@code generic}/{@code true}/{@code yes} for a generic
  * game server, {@code none}/{@code false}/{@code no} for "not a game server". Unknown values count as generic.
  */
@@ -40,13 +46,15 @@ public class GameServerService {
 
     private final List<GameServerProfile> profiles;
     private final ContainerClassificationRepository repository;
+    private final ContainerCategoryRepository categoryRepository;
     private final AuditService auditService;
     private final Clock clock;
 
     public GameServerService(List<GameServerProfile> profiles, ContainerClassificationRepository repository,
-                             AuditService auditService, Clock clock) {
+                             ContainerCategoryRepository categoryRepository, AuditService auditService, Clock clock) {
         this.profiles = profiles.stream().sorted(Comparator.comparing(GameServerProfile::displayName)).toList();
         this.repository = repository;
+        this.categoryRepository = categoryRepository;
         this.auditService = auditService;
         this.clock = clock;
     }
@@ -77,20 +85,28 @@ public class GameServerService {
     }
 
     /**
-     * Effective status of several containers, keyed by container name. Loads all manual classifications at once.
+     * Effective status of several containers, keyed by container name. Loads all manual classifications and their
+     * categories at once.
      */
     public Map<String, GameServerStatus> detectAll(List<ContainerRef> containers) {
         Map<String, ContainerClassification> classifications = StreamSupport
                 .stream(repository.findAllById(containers.stream().map(ContainerRef::name).toList()).spliterator(), false)
                 .collect(Collectors.toMap(ContainerClassification::getContainerName, Function.identity()));
+        List<String> categoryIds = classifications.values().stream()
+                .map(ContainerClassification::getCategoryId).filter(Objects::nonNull).distinct().toList();
+        Map<String, CategoryInfo> categories = categoryIds.isEmpty() ? Map.of() : StreamSupport
+                .stream(categoryRepository.findAllById(categoryIds).spliterator(), false)
+                .collect(Collectors.toMap(ContainerCategory::getId, CategoryInfo::of));
         return containers.stream().collect(Collectors.toMap(ContainerRef::name,
-                container -> detect(container, Optional.ofNullable(classifications.get(container.name()))),
+                container -> detect(container, Optional.ofNullable(classifications.get(container.name())),
+                        categories::get),
                 (first, second) -> first));
     }
 
     /** Effective status, including a manual classification. */
     public GameServerStatus detect(ContainerRef container) {
-        return detect(container, repository.findById(container.name()));
+        return detect(container, repository.findById(container.name()),
+                categoryId -> categoryRepository.findById(categoryId).map(CategoryInfo::of).orElse(null));
     }
 
     /** What automatic detection (label and image) results in, ignoring a manual classification. */
@@ -117,16 +133,20 @@ public class GameServerService {
         if (profileId != null && findProfile(profileId).isEmpty()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Unknown game server profile: " + profileId);
         }
+        ContainerCategory category = request.mode() == ClassificationRequest.Mode.CATEGORY
+                ? findCategory(request.categoryId()) : null;
 
         ContainerClassification classification = new ContainerClassification();
         classification.setContainerName(containerName);
         classification.setGameServer(gameServer);
         classification.setProfileId(profileId);
+        classification.setCategoryId(category != null ? category.getId() : null);
         classification.setUpdatedAt(clock.instant());
         classification.setUpdatedBy(actor.getUsername());
         repository.save(classification);
 
-        String classificationText = !gameServer ? "not a game server"
+        String classificationText = category != null ? "category '" + category.getName() + "'"
+                : !gameServer ? "not a game server"
                 : profileId == null ? "generic game server" : findProfile(profileId).orElseThrow().displayName();
         auditService.record(AuditEvent.success(actor.getUsername(), AuditAction.GAMESERVER_CLASSIFY, containerName,
                 "Classified container '" + containerName + "' as " + classificationText));
@@ -161,15 +181,34 @@ public class GameServerService {
         return name.startsWith("library/") ? name.substring("library/".length()) : name;
     }
 
-    private GameServerStatus detect(ContainerRef container, Optional<ContainerClassification> classification) {
-        return classification.map(this::fromClassification).orElseGet(() -> detectAutomatically(container));
+    private ContainerCategory findCategory(String categoryId) {
+        if (categoryId == null || categoryId.isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Select a category.");
+        }
+        return categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "The category does not exist (anymore)."));
     }
 
-    private GameServerStatus fromClassification(ContainerClassification classification) {
-        if (!classification.isGameServer()) {
-            return new GameServerStatus(false, null, null, Source.MANUAL);
+    /**
+     * @param categories looks up a category by ID; null if it no longer exists
+     */
+    private GameServerStatus detect(ContainerRef container, Optional<ContainerClassification> classification,
+                                    Function<String, CategoryInfo> categories) {
+        return classification.flatMap(manual -> fromClassification(manual, categories))
+                .orElseGet(() -> detectAutomatically(container));
+    }
+
+    /** Empty if the assigned category no longer exists, so automatic detection applies. */
+    private Optional<GameServerStatus> fromClassification(ContainerClassification classification,
+                                                          Function<String, CategoryInfo> categories) {
+        if (classification.getCategoryId() != null) {
+            return Optional.ofNullable(categories.apply(classification.getCategoryId()))
+                    .map(category -> new GameServerStatus(false, null, null, Source.MANUAL, category));
         }
-        return withProfile(classification.getProfileId(), Source.MANUAL);
+        if (!classification.isGameServer()) {
+            return Optional.of(new GameServerStatus(false, null, null, Source.MANUAL));
+        }
+        return Optional.of(withProfile(classification.getProfileId(), Source.MANUAL));
     }
 
     private GameServerStatus fromLabel(String value) {

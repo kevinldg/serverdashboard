@@ -2,6 +2,7 @@ package com.github.kevinldg.backend.setup;
 
 import com.github.kevinldg.backend.audit.AuditEntry;
 import com.github.kevinldg.backend.audit.AuditProperties;
+import com.github.kevinldg.backend.category.ContainerCategory;
 import com.github.kevinldg.backend.role.Permission;
 import com.github.kevinldg.backend.role.Role;
 import com.github.kevinldg.backend.role.RoleRepository;
@@ -74,6 +75,8 @@ public class DataInitializer implements ApplicationRunner {
     private void createIndexes() {
         mongoOperations.indexOps(User.class).createIndex(new Index().on("username", Sort.Direction.ASC).unique());
         mongoOperations.indexOps(Role.class).createIndex(new Index().on("name", Sort.Direction.ASC).unique());
+        mongoOperations.indexOps(ContainerCategory.class)
+                .createIndex(new Index().on("name", Sort.Direction.ASC).unique());
         createAuditRetentionIndex();
     }
 

@@ -16,6 +16,8 @@ Inspired by Portainer and Pterodactyl.
   restart policy, network, and memory limit; image pull progress is shown live
 - **Game servers**: automatic detection by image, Docker label, or manual classification; profiles and templates for
   Minecraft (Java and Bedrock) and Satisfactory
+- **Container categories** such as "System" or "Communication", managed in the admin area and assigned manually;
+  shown as colored badges and usable as a dashboard filter
 - **Configuration files** of game servers: file browser and built-in editor (Monaco), with a backup of the previous version
 - **Users, roles, and permissions**: default roles Admin, Moderator, and User; custom roles with fine-grained permissions
 - **Administration**: announcements on the dashboard, maintenance mode, system information, and an audit log of

@@ -1,4 +1,5 @@
 import { type FormEvent, useState } from "react";
+import { listContainerCategories } from "../api/categories";
 import {
     type ClassificationMode,
     classifyContainer,
@@ -12,6 +13,7 @@ import { useAuth } from "../auth/useAuth";
 import { useApiData } from "../hooks/useApiData";
 import { Alert } from "./Alert";
 import { buttonStyles } from "./buttonStyles";
+import { CategoryBadge } from "./CategoryBadge";
 import { GameServerBadge } from "./GameServerBadge";
 import { GAME_SERVER_SOURCE_LABELS } from "./gameServerLabels";
 import { Modal } from "./Modal";
@@ -21,7 +23,7 @@ const GENERIC = "generic";
 const describe = (status: GameServerStatus) =>
     status.gameServer ? `${status.profileName}, ${GAME_SERVER_SOURCE_LABELS[status.source]}` : "not a game server";
 
-/** Game server status of a container, with the option to classify it manually. */
+/** Classification of a container (game server, category, or neither), with the option to classify it manually. */
 export function GameServerSection({ container, onChanged }: { container: ContainerDetails; onChanged: () => void }) {
     const { user } = useAuth();
     const [editing, setEditing] = useState(false);
@@ -33,6 +35,11 @@ export function GameServerSection({ container, onChanged }: { container: Contain
                 {gameServer.gameServer ? (
                     <span className="flex items-center gap-2">
                         <GameServerBadge status={gameServer} />
+                        <span className="text-fg-muted">{GAME_SERVER_SOURCE_LABELS[gameServer.source]}</span>
+                    </span>
+                ) : gameServer.category ? (
+                    <span className="flex items-center gap-2">
+                        <CategoryBadge category={gameServer.category} />
                         <span className="text-fg-muted">{GAME_SERVER_SOURCE_LABELS[gameServer.source]}</span>
                     </span>
                 ) : (
@@ -69,22 +76,39 @@ function ClassificationModal({ container, onSaved, onClose }: {
     onClose: () => void;
 }) {
     const profiles = useApiData(listGameServerProfiles);
-    const manual = container.gameServer.source === "MANUAL";
+    const categories = useApiData(listContainerCategories);
+    const current = container.gameServer;
     const [mode, setMode] = useState<ClassificationMode>(
-        !manual ? "AUTOMATIC" : container.gameServer.gameServer ? "GAME_SERVER" : "NOT_GAME_SERVER",
+        current.source !== "MANUAL" ? "AUTOMATIC"
+            : current.gameServer ? "GAME_SERVER"
+            : current.category ? "CATEGORY"
+            : "NOT_GAME_SERVER",
     );
     const [profile, setProfile] = useState(
-        container.gameServer.profileId ?? container.detectedGameServer.profileId ?? GENERIC,
+        current.profileId ?? container.detectedGameServer.profileId ?? GENERIC,
     );
+    // Empty until the categories are loaded (then the first one is preselected)
+    const [selectedCategory, setSelectedCategory] = useState(current.category?.id ?? "");
+    const categoryId = selectedCategory || categories.data?.[0]?.id || "";
+    const noCategories = categories.data?.length === 0;
     const [error, setError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError(null);
+        if (mode === "CATEGORY" && !categoryId) {
+            setError("Please select a category.");
+            return;
+        }
         setSaving(true);
         try {
-            await classifyContainer(container.id, mode, mode === "GAME_SERVER" && profile !== GENERIC ? profile : null);
+            await classifyContainer(
+                container.id,
+                mode,
+                mode === "GAME_SERVER" && profile !== GENERIC ? profile : null,
+                mode === "CATEGORY" ? categoryId : null,
+            );
             onSaved();
         } catch (saveError) {
             setError(getErrorMessage(saveError));
@@ -98,6 +122,7 @@ function ClassificationModal({ container, onSaved, onClose }: {
             <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-sm">
                 {error && <Alert variant="error">{error}</Alert>}
                 {profiles.error !== null && <Alert variant="error">{getErrorMessage(profiles.error)}</Alert>}
+                {categories.error !== null && <Alert variant="error">{getErrorMessage(categories.error)}</Alert>}
 
                 <label className="flex items-start gap-3">
                     <input type="radio" className="mt-1" checked={mode === "AUTOMATIC"} onChange={() => setMode("AUTOMATIC")} />
@@ -129,8 +154,43 @@ function ClassificationModal({ container, onSaved, onClose }: {
                 </label>
 
                 <label className="flex items-start gap-3">
+                    <input
+                        type="radio"
+                        className="mt-1"
+                        checked={mode === "CATEGORY"}
+                        disabled={noCategories}
+                        onChange={() => setMode("CATEGORY")}
+                    />
+                    <span className="flex flex-1 flex-col gap-2">
+                        <span className="font-medium text-fg">Category</span>
+                        {noCategories ? (
+                            <span className="text-fg-muted">
+                                No categories yet. Administrators can create them under Administration → Categories.
+                            </span>
+                        ) : (
+                            <select
+                                value={categoryId}
+                                disabled={mode !== "CATEGORY"}
+                                onChange={(event) => setSelectedCategory(event.target.value)}
+                                aria-label="Category"
+                                className="rounded-md border border-line-strong bg-surface px-3 py-2 text-fg disabled:opacity-50"
+                            >
+                                {categories.data?.map((option) => (
+                                    <option key={option.id} value={option.id}>
+                                        {option.name}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                    </span>
+                </label>
+
+                <label className="flex items-start gap-3">
                     <input type="radio" className="mt-1" checked={mode === "NOT_GAME_SERVER"} onChange={() => setMode("NOT_GAME_SERVER")} />
-                    <span className="font-medium text-fg">Not a game server</span>
+                    <span>
+                        <span className="block font-medium text-fg">None</span>
+                        <span className="text-fg-muted">Neither a game server nor in a category</span>
+                    </span>
                 </label>
 
                 <p className="text-xs text-fg-muted">

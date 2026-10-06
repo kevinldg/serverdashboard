@@ -73,8 +73,25 @@ Decisions that complement `requirements.md`. Update this file when a decision ch
   4. Otherwise: not a game server. Ports are deliberately not used (too many false positives).
 - Every result includes its source (manual, label, image, none).
 - `PUT /api/containers/{id}/classification` (`GAMESERVER_MANAGE`): mode `AUTOMATIC` (removes the manual classification),
-  `GAME_SERVER` (with optional profile), or `NOT_GAME_SERVER`. `GET /api/game-server-profiles` lists the profiles.
+  `GAME_SERVER` (with optional profile), `CATEGORY` (with `categoryId`), or `NOT_GAME_SERVER`. `GET /api/game-server-profiles` lists the profiles.
 - Deleting a container through the application also removes its manual classification.
+
+## Container Categories
+
+- Collection `container_categories` (package `category`): name (1–30 characters, unique ignoring case; unique index on
+  `name` plus a case-insensitive check) and a color from a fixed palette (`BLUE`, `GREEN`, `AMBER`, `RED`, `PURPLE`,
+  `TEAL`, `GRAY`). The frontend maps each color to theme tokens (`--color-cat-*`) with light and dark variants.
+- A category is part of the manual classification (`categoryId` in `container_classifications`), so a container has
+  exactly one classification: game server, category, or none. Categories are never detected automatically, and a
+  container with a category is not a game server (no configuration files).
+- The classification result (`gameServer` in the container overview and details) includes `category` (`id`, `name`,
+  `color`) or null. A classification whose category no longer exists is ignored (automatic detection applies).
+- `GET/POST /api/admin/categories`, `PUT/DELETE /api/admin/categories/{id}` require `CATEGORY_MANAGE`; the list includes
+  the number of containers per category. Deleting a category removes its assignments, so those containers fall back
+  to automatic detection.
+- `GET /api/container-categories` (for the classification dialog) requires `GAMESERVER_MANAGE` or `CATEGORY_MANAGE`.
+- Frontend: admin tab "Categories"; "Change classification" on the details page offers the categories; the dashboard
+  shows category badges and filters by all / game servers / a category in use / unclassified.
 
 ## Container Creation
 
@@ -165,6 +182,7 @@ Decisions that complement `requirements.md`. Update this file when a decision ch
   - `CONTAINER_FORCE_STOP`
   - `CONTAINER_ENV_VIEW` — environment variables often contain secrets and are hidden without this permission.
   - `AUDIT_LOG_VIEW` (default: Admin only) — the audit log includes login attempts with IP addresses.
+  - `CATEGORY_MANAGE` (default: Admin only) — manage container categories; assigning them uses `GAMESERVER_MANAGE`.
 
 ## User Management
 
@@ -245,8 +263,8 @@ Decisions that complement `requirements.md`. Update this file when a decision ch
   details (e.g. changed fields, error message). Services record events through `AuditService`, which also writes the
   application log line; the former `log.info("User '…' …")` calls were replaced by it.
 - Recorded:
-  - Changes: container start/stop/restart/force stop/delete and creation, game server classification, configuration
-    file saves, users, roles (with added/removed permissions), announcements, maintenance mode.
+  - Changes: container start/stop/restart/force stop/delete and creation, classification (game server or category) and
+    container categories (category `GAME_SERVER`, shown as "Classification"), configuration file saves, users, roles (with added/removed permissions), announcements, maintenance mode.
   - Authentication: login, failed login (wrong password, unknown user, deactivated, too many attempts, maintenance mode),
     logout, own password change.
   - Failed actions: container actions, container creation, and configuration file saves that fail (Docker error, conflict).

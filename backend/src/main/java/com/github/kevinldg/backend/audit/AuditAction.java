@@ -22,6 +22,9 @@ public enum AuditAction {
     CONTAINER_CREATE(AuditCategory.CONTAINER),
 
     GAMESERVER_CLASSIFY(AuditCategory.GAME_SERVER),
+    CATEGORY_CREATE(AuditCategory.GAME_SERVER),
+    CATEGORY_UPDATE(AuditCategory.GAME_SERVER),
+    CATEGORY_DELETE(AuditCategory.GAME_SERVER),
 
     CONFIG_FILE_SAVE(AuditCategory.CONFIG_FILE),
 

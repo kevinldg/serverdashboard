@@ -172,7 +172,7 @@ class ContainerControllerTest {
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isNoContent());
         verify(containerService).classify(eq("abc"),
-                eq(new ClassificationRequest(ClassificationRequest.Mode.GAME_SERVER, "minecraft-java")), any());
+                eq(new ClassificationRequest(ClassificationRequest.Mode.GAME_SERVER, "minecraft-java", null)), any());
     }
 
     @Test

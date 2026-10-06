@@ -24,13 +24,14 @@ public enum Permission {
     CONTAINER_CREATE(Group.CONTAINERS, "Create containers"),
     CONTAINER_DELETE(Group.CONTAINERS, "Delete stopped containers (volumes are kept)"),
 
-    GAMESERVER_MANAGE(Group.GAME_SERVERS, "Classify containers as game servers"),
+    GAMESERVER_MANAGE(Group.GAME_SERVERS, "Classify containers (game server or category)"),
     GAMESERVER_CONFIG_VIEW(Group.GAME_SERVERS, "View game server configuration files"),
     GAMESERVER_CONFIG_EDIT(Group.GAME_SERVERS, "Edit game server configuration files"),
 
     USER_MANAGE(Group.ADMINISTRATION, "Manage users: create, edit, reset passwords, delete"),
     ROLE_MANAGE(Group.ADMINISTRATION, "Manage roles and their permissions"),
     ANNOUNCEMENT_MANAGE(Group.ADMINISTRATION, "Manage dashboard announcements"),
+    CATEGORY_MANAGE(Group.ADMINISTRATION, "Manage container categories (e.g. System, Communication)"),
     MAINTENANCE_MANAGE(Group.ADMINISTRATION, "Enable and disable maintenance mode"),
     SYSTEM_INFO_VIEW(Group.ADMINISTRATION, "View system information"),
     AUDIT_LOG_VIEW(Group.ADMINISTRATION, "View the audit log (includes login attempts with IP addresses)");
