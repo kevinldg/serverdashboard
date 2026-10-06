@@ -1,5 +1,6 @@
 package com.github.kevinldg.backend.common;
 
+import com.github.kevinldg.backend.audit.AuditService;
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -9,10 +10,11 @@ import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 class GlobalExceptionHandlerTest {
 
-    private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
+    private final GlobalExceptionHandler handler = new GlobalExceptionHandler(mock(AuditService.class));
 
     @AfterEach
     void clearSecurityContext() {

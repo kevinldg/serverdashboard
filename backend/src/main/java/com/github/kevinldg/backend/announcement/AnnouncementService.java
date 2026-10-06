@@ -1,10 +1,12 @@
 package com.github.kevinldg.backend.announcement;
 
 import com.github.kevinldg.backend.announcement.AnnouncementResponse.Status;
+import com.github.kevinldg.backend.audit.AuditAction;
+import com.github.kevinldg.backend.audit.AuditEvent;
+import com.github.kevinldg.backend.audit.AuditService;
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
 import com.github.kevinldg.backend.common.ApiException;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -20,7 +22,6 @@ import java.util.List;
  * Visibility is decided when announcements are requested (active, start time reached, end time not reached),
  * so announcements expire automatically without a background job.
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AnnouncementService {
@@ -29,6 +30,7 @@ public class AnnouncementService {
     static final int MAX_MESSAGE_LENGTH = 2000;
 
     private final AnnouncementRepository announcementRepository;
+    private final AuditService auditService;
     private final Clock clock;
 
     /** Announcements currently shown on the dashboard, newest first. */
@@ -62,7 +64,8 @@ public class AnnouncementService {
         announcement.setUpdatedBy(actor.getUsername());
         Announcement saved = announcementRepository.save(announcement);
 
-        log.info("User '{}' created announcement '{}'", actor.getUsername(), saved.getTitle());
+        auditService.record(withDetails(AuditEvent.success(actor.getUsername(), AuditAction.ANNOUNCEMENT_CREATE,
+                saved.getTitle(), "Created announcement '" + saved.getTitle() + "'"), saved));
         return toResponse(saved, now);
     }
 
@@ -76,15 +79,22 @@ public class AnnouncementService {
         announcement.setUpdatedBy(actor.getUsername());
         Announcement saved = announcementRepository.save(announcement);
 
-        log.info("User '{}' updated announcement '{}' ({})", actor.getUsername(), saved.getTitle(),
-                saved.isActive() ? "active" : "inactive");
+        auditService.record(withDetails(AuditEvent.success(actor.getUsername(), AuditAction.ANNOUNCEMENT_UPDATE,
+                saved.getTitle(), "Updated announcement '" + saved.getTitle() + "'"), saved));
         return toResponse(saved, now);
     }
 
     public void delete(String id, AuthenticatedUser actor) {
         Announcement announcement = find(id);
         announcementRepository.delete(announcement);
-        log.info("User '{}' deleted announcement '{}'", actor.getUsername(), announcement.getTitle());
+        auditService.record(AuditEvent.success(actor.getUsername(), AuditAction.ANNOUNCEMENT_DELETE,
+                announcement.getTitle(), "Deleted announcement '" + announcement.getTitle() + "'"));
+    }
+
+    private static AuditEvent withDetails(AuditEvent event, Announcement announcement) {
+        return event.detail("active", announcement.isActive() ? "yes" : "no")
+                .detail("starts", announcement.getStartsAt())
+                .detail("ends", announcement.getEndsAt());
     }
 
     private static void validatePeriod(AnnouncementRequest request) {

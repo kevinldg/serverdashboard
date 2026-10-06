@@ -15,6 +15,9 @@ import com.github.dockerjava.api.exception.NotModifiedException;
 import com.github.dockerjava.api.model.Container;
 import com.github.dockerjava.api.model.Frame;
 import com.github.dockerjava.api.model.StreamType;
+import com.github.kevinldg.backend.audit.AuditAction;
+import com.github.kevinldg.backend.audit.AuditOutcome;
+import com.github.kevinldg.backend.audit.AuditService;
 import com.github.kevinldg.backend.common.ApiException;
 import com.github.kevinldg.backend.container.ContainerDetailsResponse.EnvironmentVariable;
 import com.github.kevinldg.backend.container.ContainerDetailsResponse.MountInfo;
@@ -45,6 +48,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.RETURNS_SELF;
 import static org.mockito.Mockito.mock;
@@ -53,6 +57,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ContainerServiceTest {
+
+    private final AuditService auditService = mock(AuditService.class);
 
     /**
      * docker-java models are mapped with Jackson 2, so fixtures use the Docker API's JSON format.
@@ -122,7 +128,7 @@ class ContainerServiceTest {
         when(gameServerService.detectAutomatically(any())).thenReturn(MINECRAFT);
         containerService = new ContainerService(dockerClient,
                 new DockerProperties("unix:///var/run/docker.sock", Duration.ofSeconds(5), Duration.ofSeconds(5),
-                        Duration.ofSeconds(60)), gameServerService);
+                        Duration.ofSeconds(60)), gameServerService, auditService);
     }
 
     @Test
@@ -145,7 +151,7 @@ class ContainerServiceTest {
     void detailsAreMappedFromInspectResponse() throws Exception {
         stubInspect();
 
-        ContainerDetailsResponse details = containerService.getDetails("abc123", true);
+        ContainerDetailsResponse details = containerService.getDetails("abc123", true, "kevin");
 
         assertThat(details.name()).isEqualTo("minecraft-server01");
         assertThat(details.image()).isEqualTo("itzg/minecraft-server:java25");
@@ -177,23 +183,29 @@ class ContainerServiceTest {
         assertThat(details.gameServer()).isEqualTo(MINECRAFT);
         verify(gameServerService).detect(new GameServerService.ContainerRef("minecraft-server01",
                 "itzg/minecraft-server:java25", Map.of("a", "1", "b", "2")));
+        // Only the fact is recorded, never the values
+        verify(auditService).recordDeduplicated(argThat(event -> event.action() == AuditAction.CONTAINER_ENV_VIEW
+                && event.actor().equals("kevin")
+                && event.target().equals("minecraft-server01")
+                && event.details().isEmpty()));
     }
 
     @Test
     void environmentIsWithheldWithoutPermission() throws Exception {
         stubInspect();
 
-        ContainerDetailsResponse details = containerService.getDetails("abc123", false);
+        ContainerDetailsResponse details = containerService.getDetails("abc123", false, "kevin");
 
         assertThat(details.configuration().environment()).isNull();
         assertThat(details.configuration().environmentHidden()).isTrue();
+        verify(auditService, never()).recordDeduplicated(any());
     }
 
     @Test
     void missingContainerResultsInNotFound() {
         when(dockerClient.inspectContainerCmd("gone").exec()).thenThrow(new NotFoundException("No such container"));
 
-        assertThatThrownBy(() -> containerService.getDetails("gone", false))
+        assertThatThrownBy(() -> containerService.getDetails("gone", false, "kevin"))
                 .isInstanceOfSatisfying(ApiException.class, ex -> {
                     assertThat(ex.getStatus()).isEqualTo(HttpStatus.NOT_FOUND);
                     assertThat(ex.getCause()).isInstanceOf(NotFoundException.class);
@@ -278,6 +290,7 @@ class ContainerServiceTest {
         when(dockerClient.startContainerCmd("abc123").exec()).thenThrow(new NotModifiedException("already started"));
 
         assertThatCode(() -> containerService.start("abc123", "kevin")).doesNotThrowAnyException();
+        verify(auditService, never()).record(any());
     }
 
     @Test
@@ -304,6 +317,11 @@ class ContainerServiceTest {
         containerService.forceStop("abc123", "kevin");
 
         verify(dockerClient.killContainerCmd("abc123")).exec();
+        verify(auditService).record(argThat(event -> event.action() == AuditAction.CONTAINER_FORCE_STOP
+                && event.outcome() == AuditOutcome.SUCCESS
+                && event.actor().equals("kevin")
+                && event.target().equals("abc123-name")
+                && event.summary().equals("Force-stopped container 'abc123-name'")));
     }
 
     @Test
@@ -363,6 +381,9 @@ class ContainerServiceTest {
         verify(removeCommand).withForce(false);
         verify(removeCommand).exec();
         verify(gameServerService).removeClassification("abc123-name");
+        verify(auditService).record(argThat(event -> event.action() == AuditAction.CONTAINER_DELETE
+                && event.outcome() == AuditOutcome.SUCCESS
+                && "kept".equals(event.details().get("volumes"))));
     }
 
     @Test
@@ -375,6 +396,10 @@ class ContainerServiceTest {
                     assertThat(ex.getMessage()).isEqualTo("Stop the container before deleting it.");
                 });
         verify(dockerClient, never()).removeContainerCmd(anyString());
+        verify(auditService).record(argThat(event -> event.action() == AuditAction.CONTAINER_DELETE
+                && event.outcome() == AuditOutcome.FAILURE
+                && event.summary().equals("Could not delete container 'abc123-name'")
+                && event.details().get("error").equals("Stop the container before deleting it.")));
     }
 
     @Test

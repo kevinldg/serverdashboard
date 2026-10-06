@@ -1,5 +1,6 @@
 package com.github.kevinldg.backend.common;
 
+import com.github.kevinldg.backend.audit.AuditLogRepository;
 import com.github.kevinldg.backend.maintenance.MaintenanceSettingsRepository;
 import com.github.kevinldg.backend.setup.DataInitializer;
 import org.junit.jupiter.api.Test;
@@ -18,7 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /** Uses the placeholder frontend in src/test/resources/static. */
 @SpringBootTest(properties = "spring.mongodb.uri=mongodb://localhost:27017/serverdashboard-test")
-@MockitoBean(types = MaintenanceSettingsRepository.class)
+@MockitoBean(types = {MaintenanceSettingsRepository.class, AuditLogRepository.class})
 @AutoConfigureMockMvc
 class SpaWebConfigTest {
 

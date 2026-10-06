@@ -1,11 +1,13 @@
 package com.github.kevinldg.backend.gameserver;
 
+import com.github.kevinldg.backend.audit.AuditAction;
+import com.github.kevinldg.backend.audit.AuditEvent;
+import com.github.kevinldg.backend.audit.AuditService;
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
 import com.github.kevinldg.backend.common.ApiException;
 import com.github.kevinldg.backend.gameserver.GameServerStatus.Source;
 import com.github.kevinldg.backend.gameserver.profile.ContainerTemplate;
 import com.github.kevinldg.backend.gameserver.profile.GameServerProfile;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -27,7 +29,6 @@ import java.util.stream.StreamSupport;
  * Label values: a profile ID (e.g. {@code minecraft-java}), {@code generic}/{@code true}/{@code yes} for a generic
  * game server, {@code none}/{@code false}/{@code no} for "not a game server". Unknown values count as generic.
  */
-@Slf4j
 @Service
 public class GameServerService {
 
@@ -39,11 +40,14 @@ public class GameServerService {
 
     private final List<GameServerProfile> profiles;
     private final ContainerClassificationRepository repository;
+    private final AuditService auditService;
     private final Clock clock;
 
-    public GameServerService(List<GameServerProfile> profiles, ContainerClassificationRepository repository, Clock clock) {
+    public GameServerService(List<GameServerProfile> profiles, ContainerClassificationRepository repository,
+                             AuditService auditService, Clock clock) {
         this.profiles = profiles.stream().sorted(Comparator.comparing(GameServerProfile::displayName)).toList();
         this.repository = repository;
+        this.auditService = auditService;
         this.clock = clock;
     }
 
@@ -103,7 +107,8 @@ public class GameServerService {
     public void classify(String containerName, ClassificationRequest request, AuthenticatedUser actor) {
         if (request.mode() == ClassificationRequest.Mode.AUTOMATIC) {
             repository.deleteById(containerName);
-            log.info("User '{}' reset the classification of container '{}' to automatic", actor.getUsername(), containerName);
+            auditService.record(AuditEvent.success(actor.getUsername(), AuditAction.GAMESERVER_CLASSIFY, containerName,
+                    "Reset the classification of container '" + containerName + "' to automatic"));
             return;
         }
 
@@ -121,8 +126,10 @@ public class GameServerService {
         classification.setUpdatedBy(actor.getUsername());
         repository.save(classification);
 
-        log.info("User '{}' classified container '{}' as {}", actor.getUsername(), containerName,
-                !gameServer ? "not a game server" : profileId == null ? "generic game server" : profileId);
+        String classificationText = !gameServer ? "not a game server"
+                : profileId == null ? "generic game server" : findProfile(profileId).orElseThrow().displayName();
+        auditService.record(AuditEvent.success(actor.getUsername(), AuditAction.GAMESERVER_CLASSIFY, containerName,
+                "Classified container '" + containerName + "' as " + classificationText));
     }
 
     /** Called when a container is deleted through the application. */

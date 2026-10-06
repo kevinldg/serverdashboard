@@ -1,5 +1,7 @@
 package com.github.kevinldg.backend.user;
 
+import com.github.kevinldg.backend.audit.AuditAction;
+import com.github.kevinldg.backend.audit.AuditService;
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
 import com.github.kevinldg.backend.auth.PasswordGenerator;
 import com.github.kevinldg.backend.common.ApiException;
@@ -19,6 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -26,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -33,6 +37,9 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class UserManagementServiceTest {
+
+    @Mock
+    AuditService auditService;
 
     @Mock
     UserRepository userRepository;
@@ -57,7 +64,7 @@ class UserManagementServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new UserManagementService(userRepository, roleRepository, passwordEncoder, passwordGenerator);
+        service = new UserManagementService(userRepository, roleRepository, passwordEncoder, passwordGenerator, auditService);
         when(roleRepository.findById("role-admin")).thenReturn(Optional.of(adminRole));
         when(roleRepository.findById("role-user")).thenReturn(Optional.of(userRole));
         when(roleRepository.findBySuperuserTrue()).thenReturn(List.of(adminRole));
@@ -154,6 +161,11 @@ class UserManagementServiceTest {
         UserResponse response = service.updateUser("user-2", new UpdateUserRequest("bob", "role-user", false), userManager);
 
         assertThat(response.active()).isFalse();
+        // Only changed fields are recorded
+        verify(auditService).record(argThat(event -> event.action() == AuditAction.USER_UPDATE
+                && event.actor().equals("manager-1")
+                && event.target().equals("bob")
+                && event.details().equals(Map.of("active", "yes → no"))));
     }
 
     @Test
@@ -174,6 +186,8 @@ class UserManagementServiceTest {
         UserResponse response = service.updateUser("admin-1", new UpdateUserRequest("Kevin.L", "role-admin", true), admin);
 
         assertThat(response.username()).isEqualTo("kevin.l");
+        verify(auditService).record(argThat(event -> event.target().equals("kevin.l")
+                && event.details().equals(Map.of("username", "kevin → kevin.l"))));
     }
 
     @Test

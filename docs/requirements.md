@@ -42,6 +42,7 @@ The application should provide a central web interface for managing Docker conta
 * Dashboard Announcements
 * Application Maintenance Mode
 * System Information in the Admin Area
+* Audit Log in the Admin Area
 
 ## 4. Dashboard
 
@@ -318,10 +319,31 @@ The Admin Area should provide access to administrative functionality, including:
 * Announcement management
 * Maintenance mode management
 * System information
+* Audit log
 
 System information should include relevant information about the application and the managed infrastructure.
 
 The exact system information displayed should be determined during implementation based on the available Docker host and application information.
+
+### Audit Log
+
+The Admin Area should provide an audit log of recent activities, newest first.
+
+The audit log should record:
+
+* All changes (containers, game server classification, configuration files, users, roles, announcements, maintenance mode)
+* Logins, failed logins, logouts, and password changes
+* Failed actions
+* Viewing sensitive information (environment variables, configuration files, live logs)
+* Requests denied for missing permissions
+
+Each entry should show the time, the user, the activity, and its outcome. Login events should also show the client IP address.
+
+The audit log should be filterable by category, user, outcome, and time range.
+
+The audit log is visible to administrators only by default; access is a permission that can be assigned to other roles.
+
+Entries cannot be changed or deleted through the application and are removed automatically after a retention period.
 
 ## 12. Announcements
 

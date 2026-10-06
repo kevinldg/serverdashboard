@@ -39,6 +39,7 @@ import tools.jackson.databind.json.JsonMapper;
  *     <li>All {@code /api/**} endpoints require authentication; errors are returned as ProblemDetail JSON.</li>
  *     <li>Permissions are checked per endpoint with {@code @PreAuthorize("hasAuthority('PERMISSION')")}.</li>
  *     <li>Failed logins are limited per username and client address (see {@link LoginThrottle}).</li>
+ *     <li>Logins (also failed and blocked ones) and logouts are recorded in the audit log with the client address.</li>
  *     <li>While maintenance mode is active, only administrators can log in and use the API
  *         (see {@link MaintenanceModeFilter}).</li>
  * </ul>
@@ -79,11 +80,18 @@ public class SecurityConfig {
                             if (exception instanceof BadCredentialsException || exception instanceof AccountStatusException) {
                                 loginThrottle.recordFailure(request.getParameter("username"), request.getRemoteAddr());
                             }
+                            authService.recordFailedLogin(request.getParameter("username"), request.getRemoteAddr(),
+                                    exception);
                             exceptionResolver.resolveException(request, response, null, exception);
                         })
                         .permitAll())
                 .logout(logout -> logout
                         .logoutUrl("/api/auth/logout")
+                        .addLogoutHandler((request, response, authentication) -> {
+                            if (authentication != null && authentication.getPrincipal() instanceof AuthenticatedUser user) {
+                                authService.recordLogout(user.getUsername(), request.getRemoteAddr());
+                            }
+                        })
                         .logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler(HttpStatus.NO_CONTENT)))
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, exception) ->
@@ -93,7 +101,7 @@ public class SecurityConfig {
                 .requestCache(RequestCacheConfigurer::disable)
                 .addFilterAfter(new CurrentUserRefreshFilter(authenticatedUserService), SecurityContextHolderFilter.class)
                 .addFilterAfter(new MaintenanceModeFilter(maintenanceService, exceptionResolver), CurrentUserRefreshFilter.class)
-                .addFilterBefore(new LoginThrottleFilter(loginThrottle, exceptionResolver),
+                .addFilterBefore(new LoginThrottleFilter(loginThrottle, authService, exceptionResolver),
                         UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -114,13 +122,14 @@ public class SecurityConfig {
                     session.invalidate();
                 }
                 SecurityContextHolder.clearContext();
+                authService.recordBlockedLogin(user.getUsername(), request.getRemoteAddr(), "maintenance mode is active");
                 exceptionResolver.resolveException(request, response, null,
                         new MaintenanceModeException(maintenanceService.getStatus().message()));
                 return;
             }
 
             loginThrottle.recordSuccess(user.getUsername());
-            authService.recordSuccessfulLogin(user.getId());
+            authService.recordSuccessfulLogin(user.getId(), request.getRemoteAddr());
 
             // The CSRF token is replaced on login; reading it issues the new XSRF-TOKEN cookie.
             CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());

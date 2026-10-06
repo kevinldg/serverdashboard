@@ -21,7 +21,8 @@ export type Permission =
     | "ROLE_MANAGE"
     | "ANNOUNCEMENT_MANAGE"
     | "MAINTENANCE_MANAGE"
-    | "SYSTEM_INFO_VIEW";
+    | "SYSTEM_INFO_VIEW"
+    | "AUDIT_LOG_VIEW";
 
 export interface CurrentUser {
     id: string;

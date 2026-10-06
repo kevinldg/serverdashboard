@@ -1,5 +1,8 @@
 package com.github.kevinldg.backend.user;
 
+import com.github.kevinldg.backend.audit.AuditAction;
+import com.github.kevinldg.backend.audit.AuditEvent;
+import com.github.kevinldg.backend.audit.AuditService;
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
 import com.github.kevinldg.backend.auth.PasswordGenerator;
 import com.github.kevinldg.backend.auth.PasswordPolicy;
@@ -7,7 +10,6 @@ import com.github.kevinldg.backend.common.ApiException;
 import com.github.kevinldg.backend.role.Role;
 import com.github.kevinldg.backend.role.RoleRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
@@ -19,6 +21,7 @@ import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -33,7 +36,6 @@ import java.util.stream.Collectors;
  *         (relevant if {@code USER_MANAGE} is granted to non-admin roles).</li>
  * </ul>
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserManagementService {
@@ -47,6 +49,7 @@ public class UserManagementService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final PasswordGenerator passwordGenerator;
+    private final AuditService auditService;
 
     public List<UserResponse> listUsers() {
         Map<String, Role> roles = roleRepository.findAll().stream()
@@ -90,7 +93,10 @@ public class UserManagementService {
         user.setUpdatedAt(user.getCreatedAt());
         User saved = save(user);
 
-        log.info("User '{}' created user '{}' with role '{}'", actor.getUsername(), username, role.getName());
+        auditService.record(AuditEvent.success(actor.getUsername(), AuditAction.USER_CREATE, username,
+                        "Created user '" + username + "'")
+                .detail("role", role.getName())
+                .detail("password", generatedPassword != null ? "generated" : "set manually"));
         return new CreatedUserResponse(toResponse(saved, role), generatedPassword);
     }
 
@@ -115,6 +121,11 @@ public class UserManagementService {
         if (!username.equals(user.getUsername())) {
             requireUsernameAvailable(username);
         }
+        AuditEvent event = AuditEvent.success(actor.getUsername(), AuditAction.USER_UPDATE, username,
+                        "Updated user '" + username + "'")
+                .detail("username", change(user.getUsername(), username))
+                .detail("role", change(currentRole != null ? currentRole.getName() : null, newRole.getName()))
+                .detail("active", change(user.isActive() ? "yes" : "no", request.active() ? "yes" : "no"));
 
         user.setUsername(username);
         user.setRoleId(newRole.getId());
@@ -122,8 +133,7 @@ public class UserManagementService {
         user.setUpdatedAt(Instant.now());
         User saved = save(user);
 
-        log.info("User '{}' updated user '{}' (role '{}', {})", actor.getUsername(), username, newRole.getName(),
-                saved.isActive() ? "active" : "deactivated");
+        auditService.record(event);
         return toResponse(saved, newRole);
     }
 
@@ -144,7 +154,8 @@ public class UserManagementService {
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);
 
-        log.info("User '{}' reset the password of user '{}'", actor.getUsername(), user.getUsername());
+        auditService.record(AuditEvent.success(actor.getUsername(), AuditAction.USER_PASSWORD_RESET, user.getUsername(),
+                "Reset the password of user '" + user.getUsername() + "' (all sessions ended)"));
         return new PasswordResetResponse(user.getUsername(), generatedPassword);
     }
 
@@ -160,7 +171,13 @@ public class UserManagementService {
         }
 
         userRepository.delete(user);
-        log.info("User '{}' deleted user '{}'", actor.getUsername(), user.getUsername());
+        auditService.record(AuditEvent.success(actor.getUsername(), AuditAction.USER_DELETE, user.getUsername(),
+                "Deleted user '" + user.getUsername() + "'"));
+    }
+
+    /** "old → new" for the audit log, or null if the value did not change. */
+    private static String change(String oldValue, String newValue) {
+        return Objects.equals(oldValue, newValue) ? null : oldValue + " → " + newValue;
     }
 
     private void requireMayManage(Role targetRole, AuthenticatedUser actor) {

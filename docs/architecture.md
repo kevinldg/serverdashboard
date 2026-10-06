@@ -51,7 +51,8 @@ Decisions that complement `requirements.md`. Update this file when a decision ch
 
 - Actions are idempotent: if the container is already in the requested state, the request succeeds without changes.
 - `app.docker.response-timeout` (90 s) must be longer than the stop timeout, so stopping is not cut off client-side.
-- Every action is logged with user, action, and container (no separate audit log).
+- Every action that changes something, and every failed action, is recorded in the audit log (see Audit Log);
+  requests that change nothing (e.g. starting a running container) are only written to the application log.
 - The frontend asks for confirmation (modal) for every action except start. The delete confirmation lists
   the volumes and bind mounts that remain and warns about unnamed volumes and data stored inside the container.
 - Destructive actions are tested against a local Docker daemon (e.g. the development sandbox), never against
@@ -163,6 +164,7 @@ Decisions that complement `requirements.md`. Update this file when a decision ch
   - `CONTAINER_CREATE` (default: Admin only)
   - `CONTAINER_FORCE_STOP`
   - `CONTAINER_ENV_VIEW` — environment variables often contain secrets and are hidden without this permission.
+  - `AUDIT_LOG_VIEW` (default: Admin only) — the audit log includes login attempts with IP addresses.
 
 ## User Management
 
@@ -235,6 +237,37 @@ Decisions that complement `requirements.md`. Update this file when a decision ch
     within one heartbeat interval.
   - A closed browser connection is detected on the next send (log line or heartbeat), which frees the slot.
   - The frontend does not reconnect automatically (avoids gaps/duplicates); the user resumes manually.
+
+## Audit Log
+
+- Collection `audit_log` (package `audit`); entries hold time, actor (username at that time; for failed logins the
+  attempted username), category, action, outcome (`SUCCESS`, `FAILURE`, `DENIED`), target, a readable summary, and
+  details (e.g. changed fields, error message). Services record events through `AuditService`, which also writes the
+  application log line; the former `log.info("User '…' …")` calls were replaced by it.
+- Recorded:
+  - Changes: container start/stop/restart/force stop/delete and creation, game server classification, configuration
+    file saves, users, roles (with added/removed permissions), announcements, maintenance mode.
+  - Authentication: login, failed login (wrong password, unknown user, deactivated, too many attempts, maintenance mode),
+    logout, own password change.
+  - Failed actions: container actions, container creation, and configuration file saves that fail (Docker error, conflict).
+    Validation errors and rule rejections in user/role management (e.g. "last admin") are not recorded.
+  - Sensitive reads (category `SENSITIVE_READ`): environment variables shown on the details page, configuration file or
+    backup opened, live logs opened. The regular logs on the details page are not recorded.
+  - Requests answered with 403 (missing permission, also `ApiException`s with 403); CSRF failures are not recorded.
+- Sensitive reads, denied requests, and logins blocked by throttling or maintenance mode are deduplicated: the same event
+  (user, action, outcome, target, summary) is recorded at most once per `app.audit.deduplication` (15 minutes), in memory.
+- The client IP address is only stored for login, failed login, and logout. Never stored: passwords, environment
+  variable values, file contents.
+- Text fields are limited to 500 characters; control characters are replaced in the log line (no forged log lines via
+  attempted usernames).
+- Recording is best effort: if MongoDB fails, the action still succeeds and a warning is logged.
+- Retention: TTL index `timestamp_ttl`, `app.audit.retention` (`AUDIT_RETENTION`, default `365d`). The data initializer
+  replaces the index when the configured retention changes.
+- `GET /api/admin/audit-log?page&size&category&actor&outcome&from&to` (newest first, 50 per page, max. 200; `from`
+  inclusive, `to` exclusive) and `GET /api/admin/audit-log/actors` require `AUDIT_LOG_VIEW` (Admin only by default).
+  There is no endpoint to change or delete entries.
+- Frontend: admin tab "Audit log" with filters for category, user, outcome, and time range; changes made outside the
+  dashboard (e.g. Docker CLI on the server) are not part of the audit log.
 
 ## Error Handling
 

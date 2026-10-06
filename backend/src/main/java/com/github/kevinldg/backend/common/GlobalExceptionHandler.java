@@ -1,7 +1,12 @@
 package com.github.kevinldg.backend.common;
 
+import com.github.kevinldg.backend.audit.AuditAction;
+import com.github.kevinldg.backend.audit.AuditEvent;
+import com.github.kevinldg.backend.audit.AuditService;
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
 import com.github.kevinldg.backend.maintenance.MaintenanceModeException;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -31,13 +36,20 @@ import java.util.Map;
  * Security errors raised in the filter chain are routed here as well (see
  * {@link com.github.kevinldg.backend.security.SecurityConfig}), so all API errors share one format.
  * Technical details (unexpected errors, causes of {@link ApiException}s) are only included for administrators.
+ * Requests rejected for missing permissions (403) are recorded in the audit log.
  */
 @Slf4j
 @RestControllerAdvice
+@RequiredArgsConstructor
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
+    private final AuditService auditService;
+
     @ExceptionHandler(ApiException.class)
-    public ProblemDetail handleApiException(ApiException ex) {
+    public ProblemDetail handleApiException(ApiException ex, HttpServletRequest request) {
+        if (ex.getStatus() == HttpStatus.FORBIDDEN) {
+            recordAccessDenied(request, ex.getMessage());
+        }
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(ex.getStatus(), ex.getMessage());
         if (!ex.getFieldErrors().isEmpty()) {
             problem.setProperty("errors", new LinkedHashMap<>(ex.getFieldErrors()));
@@ -72,7 +84,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ProblemDetail handleAccessDeniedException(AccessDeniedException ex) {
+    public ProblemDetail handleAccessDeniedException(AccessDeniedException ex, HttpServletRequest request) {
+        recordAccessDenied(request, null);
         return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN,
                 "You do not have permission to perform this action.");
     }
@@ -98,6 +111,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         problem.setDetail("The request contains invalid fields.");
         problem.setProperty("errors", errors);
         return handleExceptionInternal(ex, problem, headers, status, request);
+    }
+
+    /**
+     * Deduplicated, so a page that keeps requesting something the user may not see does not flood the audit log.
+     * CSRF failures are handled separately and not recorded.
+     */
+    private void recordAccessDenied(HttpServletRequest request, String reason) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String actor = authentication != null && authentication.getPrincipal() instanceof AuthenticatedUser user
+                ? user.getUsername() : "(anonymous)";
+        String endpoint = request.getMethod() + " " + request.getRequestURI();
+        auditService.recordDeduplicated(AuditEvent.denied(actor, AuditAction.ACCESS_DENIED, endpoint,
+                "Access denied: " + endpoint).detail("reason", reason));
     }
 
     private void addTechnicalDetailsForAdmins(ProblemDetail problem, Throwable cause) {

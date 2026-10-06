@@ -3,6 +3,9 @@ package com.github.kevinldg.backend.container;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.model.Frame;
+import com.github.kevinldg.backend.audit.AuditAction;
+import com.github.kevinldg.backend.audit.AuditEvent;
+import com.github.kevinldg.backend.audit.AuditService;
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
 import com.github.kevinldg.backend.auth.AuthenticatedUserService;
 import com.github.kevinldg.backend.common.ApiException;
@@ -36,6 +39,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>
  * Every heartbeat re-checks the user (active, session still valid, {@code CONTAINER_LOGS_VIEW}) and maintenance
  * mode, so revoked access ends the stream within one heartbeat interval.
+ * Opening a stream is recorded in the audit log (logs may contain sensitive information).
  */
 @Slf4j
 @Service
@@ -46,18 +50,20 @@ public class ContainerLogStreamService {
     private final AuthenticatedUserService authenticatedUserService;
     private final LogStreamProperties properties;
     private final MaintenanceService maintenanceService;
+    private final AuditService auditService;
     private final ScheduledExecutorService scheduler;
     private final AtomicInteger activeStreams = new AtomicInteger();
     private final Map<LogStream, Boolean> streams = new ConcurrentHashMap<>();
 
     public ContainerLogStreamService(DockerClient dockerClient, ContainerService containerService,
                                      AuthenticatedUserService authenticatedUserService, LogStreamProperties properties,
-                                     MaintenanceService maintenanceService) {
+                                     MaintenanceService maintenanceService, AuditService auditService) {
         this.dockerClient = dockerClient;
         this.containerService = containerService;
         this.authenticatedUserService = authenticatedUserService;
         this.properties = properties;
         this.maintenanceService = maintenanceService;
+        this.auditService = auditService;
         this.scheduler = Executors.newSingleThreadScheduledExecutor(
                 Thread.ofPlatform().daemon().name("log-stream-scheduler").factory());
     }
@@ -68,9 +74,10 @@ public class ContainerLogStreamService {
             throw new ApiException(HttpStatus.TOO_MANY_REQUESTS,
                     "Too many live log streams are open. Please try again later.");
         }
+        String containerName;
         try {
             // Fails with a regular API error (e.g. 404) before the stream starts
-            containerService.getState(containerId);
+            containerName = containerService.getName(containerId);
         } catch (RuntimeException e) {
             activeStreams.decrementAndGet();
             throw e;
@@ -81,6 +88,8 @@ public class ContainerLogStreamService {
         LogStream stream = new LogStream(containerId, user, emitter);
         streams.put(stream, Boolean.TRUE);
         stream.start();
+        auditService.recordDeduplicated(AuditEvent.success(user.getUsername(), AuditAction.CONTAINER_LIVE_LOGS,
+                containerName, "Opened the live logs of container '" + containerName + "'"));
         return stream.emitter;
     }
 

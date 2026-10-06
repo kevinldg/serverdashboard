@@ -18,7 +18,8 @@ Inspired by Portainer and Pterodactyl.
   Minecraft (Java and Bedrock) and Satisfactory
 - **Configuration files** of game servers: file browser and built-in editor (Monaco), with a backup of the previous version
 - **Users, roles, and permissions**: default roles Admin, Moderator, and User; custom roles with fine-grained permissions
-- **Administration**: announcements on the dashboard, maintenance mode, and system information
+- **Administration**: announcements on the dashboard, maintenance mode, system information, and an audit log of
+  recent activities (changes, logins, failed actions, sensitive reads, denied requests)
 
 ## Tech stack
 

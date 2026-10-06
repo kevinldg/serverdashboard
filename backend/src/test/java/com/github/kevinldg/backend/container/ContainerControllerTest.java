@@ -1,5 +1,6 @@
 package com.github.kevinldg.backend.container;
 
+import com.github.kevinldg.backend.audit.AuditLogRepository;
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
 import com.github.kevinldg.backend.common.ApiException;
 import com.github.kevinldg.backend.gameserver.ClassificationRequest;
@@ -57,8 +58,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(properties = "spring.mongodb.uri=mongodb://localhost:27017/serverdashboard-test")
-// The maintenance state would otherwise be read from MongoDB; unknown means "off".
-@MockitoBean(types = MaintenanceSettingsRepository.class)
+// The maintenance state would otherwise be read from MongoDB (unknown means "off"); audit entries are not stored.
+@MockitoBean(types = {MaintenanceSettingsRepository.class, AuditLogRepository.class})
 @AutoConfigureMockMvc
 class ContainerControllerTest {
 
@@ -102,28 +103,28 @@ class ContainerControllerTest {
     void detailsRequireContainerPermission() throws Exception {
         mockMvc.perform(get("/api/containers/abc").with(userWith(Permission.DASHBOARD_VIEW)))
                 .andExpect(status().isForbidden());
-        verify(containerService, never()).getDetails(anyString(), anyBoolean());
+        verify(containerService, never()).getDetails(anyString(), anyBoolean(), anyString());
     }
 
     @Test
     void detailsWithholdEnvironmentWithoutPermission() throws Exception {
         mockMvc.perform(get("/api/containers/abc").with(userWith(Permission.CONTAINER_VIEW)))
                 .andExpect(status().isOk());
-        verify(containerService).getDetails("abc", false);
+        verify(containerService).getDetails("abc", false, "tester");
     }
 
     @Test
     void detailsIncludeEnvironmentWithPermission() throws Exception {
         mockMvc.perform(get("/api/containers/abc").with(userWith(Permission.CONTAINER_VIEW, Permission.CONTAINER_ENV_VIEW)))
                 .andExpect(status().isOk());
-        verify(containerService).getDetails("abc", true);
+        verify(containerService).getDetails("abc", true, "tester");
     }
 
     @Test
     void adminsSeeEverything() throws Exception {
         mockMvc.perform(get("/api/containers/abc").with(admin()))
                 .andExpect(status().isOk());
-        verify(containerService).getDetails("abc", true);
+        verify(containerService).getDetails("abc", true, "tester");
     }
 
     @Test
@@ -131,7 +132,7 @@ class ContainerControllerTest {
         mockMvc.perform(get("/api/containers/-abc").with(admin()))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON));
-        verify(containerService, never()).getDetails(anyString(), anyBoolean());
+        verify(containerService, never()).getDetails(anyString(), anyBoolean(), anyString());
     }
 
     @Test

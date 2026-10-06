@@ -1,5 +1,7 @@
 package com.github.kevinldg.backend.maintenance;
 
+import com.github.kevinldg.backend.audit.AuditAction;
+import com.github.kevinldg.backend.audit.AuditService;
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,12 +14,15 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class MaintenanceServiceTest {
+
+    private final AuditService auditService = mock(AuditService.class);
 
     private static final Instant NOW = Instant.parse("2026-10-03T12:00:00Z");
 
@@ -28,7 +33,7 @@ class MaintenanceServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new MaintenanceService(repository, Clock.fixed(NOW, ZoneOffset.UTC));
+        service = new MaintenanceService(repository, auditService, Clock.fixed(NOW, ZoneOffset.UTC));
         when(repository.save(any(MaintenanceSettings.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
@@ -65,6 +70,9 @@ class MaintenanceServiceTest {
         assertThat(service.allows(admin)).isTrue();
         assertThat(service.allows(user)).isFalse();
         assertThat(service.allows(null)).isFalse();
+        verify(auditService).record(argThat(event -> event.action() == AuditAction.MAINTENANCE_ENABLE
+                && event.summary().equals("Enabled maintenance mode")
+                && event.details().get("message").equals("Back at 22:00.")));
     }
 
     @Test

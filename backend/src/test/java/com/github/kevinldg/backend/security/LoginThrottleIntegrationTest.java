@@ -1,5 +1,7 @@
 package com.github.kevinldg.backend.security;
 
+import com.github.kevinldg.backend.audit.AuditAction;
+import com.github.kevinldg.backend.audit.AuditLogRepository;
 import com.github.kevinldg.backend.maintenance.MaintenanceSettingsRepository;
 import com.github.kevinldg.backend.role.Role;
 import com.github.kevinldg.backend.role.RoleRepository;
@@ -22,6 +24,8 @@ import java.util.Optional;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -29,7 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(properties = "spring.mongodb.uri=mongodb://localhost:27017/serverdashboard-test")
-@MockitoBean(types = MaintenanceSettingsRepository.class)
+@MockitoBean(types = {MaintenanceSettingsRepository.class, AuditLogRepository.class})
 @AutoConfigureMockMvc
 class LoginThrottleIntegrationTest {
 
@@ -43,6 +47,9 @@ class LoginThrottleIntegrationTest {
 
     @Autowired
     LoginThrottle loginThrottle;
+
+    @Autowired
+    AuditLogRepository auditLogRepository;
 
     @MockitoBean
     UserRepository userRepository;
@@ -86,6 +93,9 @@ class LoginThrottleIntegrationTest {
                 .andExpect(status().isTooManyRequests())
                 .andExpect(header().exists("Retry-After"))
                 .andExpect(jsonPath("$.detail", containsString("Too many failed login attempts")));
+        verify(auditLogRepository).save(argThat(entry -> entry.getAction() == AuditAction.LOGIN_FAILED
+                && entry.getSummary().equals("Login failed: too many failed attempts")
+                && "127.0.0.1".equals(entry.getIp())));
     }
 
     @Test

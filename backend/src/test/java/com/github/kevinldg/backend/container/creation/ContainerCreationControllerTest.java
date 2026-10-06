@@ -1,5 +1,6 @@
 package com.github.kevinldg.backend.container.creation;
 
+import com.github.kevinldg.backend.audit.AuditLogRepository;
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
 import com.github.kevinldg.backend.maintenance.MaintenanceSettingsRepository;
 import com.github.kevinldg.backend.role.Permission;
@@ -34,7 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(properties = "spring.mongodb.uri=mongodb://localhost:27017/serverdashboard-test")
-@MockitoBean(types = MaintenanceSettingsRepository.class)
+@MockitoBean(types = {MaintenanceSettingsRepository.class, AuditLogRepository.class})
 @AutoConfigureMockMvc
 class ContainerCreationControllerTest {
 

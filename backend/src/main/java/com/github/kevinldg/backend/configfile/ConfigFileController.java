@@ -46,15 +46,17 @@ public class ConfigFileController {
     @GetMapping("/content")
     @PreAuthorize("hasAuthority('GAMESERVER_CONFIG_VIEW')")
     public FileContent readFile(@PathVariable @Pattern(regexp = CONTAINER_ID_PATTERN) String id,
-                                @RequestParam String path) {
-        return configFileService.readFile(id, path);
+                                @RequestParam String path,
+                                @AuthenticationPrincipal AuthenticatedUser user) {
+        return configFileService.readFile(id, path, user.getUsername());
     }
 
     @GetMapping("/backup")
     @PreAuthorize("hasAuthority('GAMESERVER_CONFIG_VIEW')")
     public Backup getBackup(@PathVariable @Pattern(regexp = CONTAINER_ID_PATTERN) String id,
-                            @RequestParam String path) {
-        return configFileService.getBackup(id, path);
+                            @RequestParam String path,
+                            @AuthenticationPrincipal AuthenticatedUser user) {
+        return configFileService.getBackup(id, path, user.getUsername());
     }
 
     @PutMapping("/content")

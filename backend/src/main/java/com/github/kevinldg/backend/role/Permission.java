@@ -32,7 +32,8 @@ public enum Permission {
     ROLE_MANAGE(Group.ADMINISTRATION, "Manage roles and their permissions"),
     ANNOUNCEMENT_MANAGE(Group.ADMINISTRATION, "Manage dashboard announcements"),
     MAINTENANCE_MANAGE(Group.ADMINISTRATION, "Enable and disable maintenance mode"),
-    SYSTEM_INFO_VIEW(Group.ADMINISTRATION, "View system information");
+    SYSTEM_INFO_VIEW(Group.ADMINISTRATION, "View system information"),
+    AUDIT_LOG_VIEW(Group.ADMINISTRATION, "View the audit log (includes login attempts with IP addresses)");
 
     private final Group group;
     private final String description;

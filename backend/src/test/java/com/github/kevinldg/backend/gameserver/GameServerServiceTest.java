@@ -1,5 +1,6 @@
 package com.github.kevinldg.backend.gameserver;
 
+import com.github.kevinldg.backend.audit.AuditService;
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
 import com.github.kevinldg.backend.common.ApiException;
 import com.github.kevinldg.backend.gameserver.ClassificationRequest.Mode;
@@ -32,6 +33,8 @@ import static org.mockito.Mockito.when;
 
 class GameServerServiceTest {
 
+    private final AuditService auditService = mock(AuditService.class);
+
     // Containers as found on the production server (labels shortened)
     private static final ContainerRef MINECRAFT = new ContainerRef("minecraft-server01", "itzg/minecraft-server:java25",
             Map.of("org.opencontainers.image.title", "docker-minecraft-server"));
@@ -47,7 +50,7 @@ class GameServerServiceTest {
     void setUp() {
         service = new GameServerService(
                 List.of(new SatisfactoryProfile(), new MinecraftJavaProfile(), new MinecraftBedrockProfile()),
-                repository, Clock.fixed(Instant.parse("2026-10-03T12:00:00Z"), ZoneOffset.UTC));
+                repository, auditService, Clock.fixed(Instant.parse("2026-10-03T12:00:00Z"), ZoneOffset.UTC));
         when(repository.findById(any())).thenReturn(Optional.empty());
         when(repository.findAllById(anyIterable())).thenReturn(List.of());
     }

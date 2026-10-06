@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.InspectContainerResponse;
+import com.github.kevinldg.backend.audit.AuditAction;
+import com.github.kevinldg.backend.audit.AuditOutcome;
+import com.github.kevinldg.backend.audit.AuditService;
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
 import com.github.kevinldg.backend.common.ApiException;
 import com.github.kevinldg.backend.configfile.ConfigFileResponses.FileContent;
@@ -34,6 +37,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
@@ -42,6 +46,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ConfigFileServiceTest {
+
+    private final AuditService auditService = mock(AuditService.class);
 
     private static final ObjectMapper DOCKER_JSON = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -57,7 +63,7 @@ class ConfigFileServiceTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        service = new ConfigFileService(dockerClient, containerFiles, gameServerService, backupRepository,
+        service = new ConfigFileService(dockerClient, containerFiles, gameServerService, backupRepository, auditService,
                 Clock.fixed(NOW, ZoneOffset.UTC));
         stubContainer("mc", "minecraft-server01", true, "[]", "[\"EULA=TRUE\"]");
         MinecraftJavaProfile minecraft = new MinecraftJavaProfile();
@@ -133,7 +139,7 @@ class ConfigFileServiceTest {
 
     @Test
     void readReturnsContentHashAndMinecraftHint() {
-        FileContent content = service.readFile("mc", "/data/server.properties");
+        FileContent content = service.readFile("mc", "/data/server.properties", "kevin");
 
         assertThat(content.content()).isEqualTo("motd=Hello\nmax-players=10\n");
         assertThat(content.sha256()).isEqualTo(ConfigFileService.sha256(PROPERTIES));
@@ -145,25 +151,25 @@ class ConfigFileServiceTest {
     void noHintWhenServerPropertiesAreManagedManually() throws Exception {
         stubContainer("mc", "minecraft-server01", true, "[]", "[\"OVERRIDE_SERVER_PROPERTIES=false\"]");
 
-        assertThat(service.readFile("mc", "/data/server.properties").hints()).isEmpty();
+        assertThat(service.readFile("mc", "/data/server.properties", "kevin").hints()).isEmpty();
     }
 
     @Test
     void onlyEditableTextFilesCanBeOpened() {
-        assertStatus(() -> service.readFile("mc", "/data/server.jar"), HttpStatus.BAD_REQUEST);
-        assertStatus(() -> service.readFile("mc", "/data/missing.json"), HttpStatus.NOT_FOUND);
+        assertStatus(() -> service.readFile("mc", "/data/server.jar", "kevin"), HttpStatus.BAD_REQUEST);
+        assertStatus(() -> service.readFile("mc", "/data/missing.json", "kevin"), HttpStatus.NOT_FOUND);
 
         when(containerFiles.read("mc", "/data/link.json", ConfigFileService.MAX_FILE_SIZE))
                 .thenReturn(Optional.of(file("/data/link.json", Type.SYMLINK, null)));
-        assertStatus(() -> service.readFile("mc", "/data/link.json"), HttpStatus.BAD_REQUEST);
+        assertStatus(() -> service.readFile("mc", "/data/link.json", "kevin"), HttpStatus.BAD_REQUEST);
 
         when(containerFiles.read("mc", "/data/huge.json", ConfigFileService.MAX_FILE_SIZE))
                 .thenReturn(Optional.of(file("/data/huge.json", Type.FILE, null)));
-        assertStatus(() -> service.readFile("mc", "/data/huge.json"), HttpStatus.BAD_REQUEST);
+        assertStatus(() -> service.readFile("mc", "/data/huge.json", "kevin"), HttpStatus.BAD_REQUEST);
 
         when(containerFiles.read("mc", "/data/binary.txt", ConfigFileService.MAX_FILE_SIZE))
                 .thenReturn(Optional.of(file("/data/binary.txt", Type.FILE, new byte[]{'a', 0, 'b'})));
-        assertStatus(() -> service.readFile("mc", "/data/binary.txt"), HttpStatus.BAD_REQUEST);
+        assertStatus(() -> service.readFile("mc", "/data/binary.txt", "kevin"), HttpStatus.BAD_REQUEST);
     }
 
     @Test
@@ -185,6 +191,10 @@ class ConfigFileServiceTest {
         assertThat(backup.getValue().getContent()).isEqualTo("motd=Hello\nmax-players=10\n");
         assertThat(backup.getValue().getReplacedBy()).isEqualTo("kevin");
         assertThat(backup.getValue().getReplacedAt()).isEqualTo(NOW);
+        verify(auditService).record(argThat(event -> event.action() == AuditAction.CONFIG_FILE_SAVE
+                && event.outcome() == AuditOutcome.SUCCESS
+                && event.target().equals("minecraft-server01")
+                && event.summary().equals("Saved '/data/server.properties' in container 'minecraft-server01'")));
     }
 
     @Test
@@ -192,6 +202,9 @@ class ConfigFileServiceTest {
         assertStatus(() -> service.saveFile("mc", "/data/server.properties", "x", "outdated-hash", admin), HttpStatus.CONFLICT);
         verify(containerFiles, never()).write(anyString(), anyString(), any(), anyInt(), anyLong(), anyLong());
         verify(backupRepository, never()).save(any());
+        verify(auditService).record(argThat(event -> event.action() == AuditAction.CONFIG_FILE_SAVE
+                && event.outcome() == AuditOutcome.FAILURE
+                && event.details().get("error").startsWith("The file was changed in the meantime")));
     }
 
     @Test
@@ -202,7 +215,8 @@ class ConfigFileServiceTest {
 
     @Test
     void backupIsReturnedOrNotFound() {
-        assertStatus(() -> service.getBackup("mc", "/data/server.properties"), HttpStatus.NOT_FOUND);
+        assertStatus(() -> service.getBackup("mc", "/data/server.properties", "kevin"), HttpStatus.NOT_FOUND);
+        verify(auditService, never()).recordDeduplicated(any());
 
         ConfigFileBackup backup = new ConfigFileBackup();
         backup.setContent("old");
@@ -210,8 +224,12 @@ class ConfigFileServiceTest {
         backup.setReplacedBy("kevin");
         when(backupRepository.findById("minecraft-server01:/data/server.properties")).thenReturn(Optional.of(backup));
 
-        assertThat(service.getBackup("mc", "/data/server.properties").content()).isEqualTo("old");
-        assertThat(service.readFile("mc", "/data/server.properties").backup().replacedBy()).isEqualTo("kevin");
+        assertThat(service.getBackup("mc", "/data/server.properties", "kevin").content()).isEqualTo("old");
+        assertThat(service.readFile("mc", "/data/server.properties", "kevin").backup().replacedBy()).isEqualTo("kevin");
+        verify(auditService).recordDeduplicated(argThat(event -> event.action() == AuditAction.CONFIG_FILE_BACKUP_VIEW
+                && event.actor().equals("kevin")));
+        verify(auditService).recordDeduplicated(argThat(event -> event.action() == AuditAction.CONFIG_FILE_OPEN
+                && event.summary().equals("Opened '/data/server.properties' in container 'minecraft-server01'")));
     }
 
     private void stubContainer(String id, String name, boolean running, String mountsJson, String envJson) throws Exception {

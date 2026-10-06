@@ -13,6 +13,9 @@ import com.github.dockerjava.api.model.Network;
 import com.github.dockerjava.api.model.Ports;
 import com.github.dockerjava.api.model.PullResponseItem;
 import com.github.dockerjava.api.model.RestartPolicy;
+import com.github.kevinldg.backend.audit.AuditAction;
+import com.github.kevinldg.backend.audit.AuditEvent;
+import com.github.kevinldg.backend.audit.AuditService;
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
 import com.github.kevinldg.backend.common.ApiException;
 import com.github.kevinldg.backend.container.creation.ContainerCreateRequest.PortSpec;
@@ -50,6 +53,7 @@ import java.util.regex.Pattern;
  * <p>
  * Jobs are kept in memory (single backend instance) and removed one hour after they finished.
  * Progress is available via {@link #getJob} and as Server-Sent Events ({@link #subscribe}, event {@code update}).
+ * The result of each job (created, created but not started, failed) is recorded in the audit log.
  */
 @Slf4j
 @Service
@@ -66,17 +70,19 @@ public class ContainerCreationService {
     private final ContainerCreationValidator validator;
     private final ContainerCreationProperties properties;
     private final GameServerService gameServerService;
+    private final AuditService auditService;
     private final Clock clock;
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
     private final Map<String, Job> jobs = new ConcurrentHashMap<>();
 
     public ContainerCreationService(DockerClient dockerClient, ContainerCreationValidator validator,
                                     ContainerCreationProperties properties, GameServerService gameServerService,
-                                    Clock clock) {
+                                    AuditService auditService, Clock clock) {
         this.dockerClient = dockerClient;
         this.validator = validator;
         this.properties = properties;
         this.gameServerService = gameServerService;
+        this.auditService = auditService;
         this.clock = clock;
     }
 
@@ -140,7 +146,9 @@ public class ContainerCreationService {
 
             if (!request.start()) {
                 job.update(CreationJobStatus.COMPLETED, "The container was created.", null);
-                log.info("User '{}' created container '{}'", actor.getUsername(), request.name());
+                auditService.record(withRequestDetails(AuditEvent.success(actor.getUsername(),
+                        AuditAction.CONTAINER_CREATE, request.name(), "Created container '" + request.name() + "'"),
+                        request, template));
                 return;
             }
 
@@ -148,23 +156,42 @@ public class ContainerCreationService {
             try {
                 dockerClient.startContainerCmd(created.getId()).exec();
             } catch (RuntimeException e) {
-                job.fail(CreationJobStatus.START_FAILED, startFailureMessage(e), e);
+                String message = startFailureMessage(e);
+                job.fail(CreationJobStatus.START_FAILED, message, e);
                 log.warn("Container '{}' was created but could not be started: {}", request.name(), e.toString());
+                auditService.record(withRequestDetails(AuditEvent.failure(actor.getUsername(),
+                        AuditAction.CONTAINER_CREATE, request.name(),
+                        "Created container '" + request.name() + "', but it could not be started", message),
+                        request, template));
                 return;
             }
             job.update(CreationJobStatus.COMPLETED, "The container was created and started.", null);
-            log.info("User '{}' created and started container '{}'", actor.getUsername(), request.name());
+            auditService.record(withRequestDetails(AuditEvent.success(actor.getUsername(), AuditAction.CONTAINER_CREATE,
+                    request.name(), "Created and started container '" + request.name() + "'"), request, template));
         } catch (PullFailedException e) {
-            job.fail(CreationJobStatus.FAILED, e.getMessage(), e.getCause());
+            failJob(job, e.getMessage(), e.getCause(), request, template, actor);
         } catch (ConflictException e) {
-            job.fail(CreationJobStatus.FAILED, "A container with this name already exists.", e);
+            failJob(job, "A container with this name already exists.", e, request, template, actor);
         } catch (RuntimeException e) {
-            job.fail(CreationJobStatus.FAILED, createFailureMessage(e), e);
             log.warn("Creating container '{}' failed: {}", request.name(), e.toString());
+            failJob(job, createFailureMessage(e), e, request, template, actor);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            job.fail(CreationJobStatus.FAILED, "Creating the container was interrupted.", e);
+            failJob(job, "Creating the container was interrupted.", e, request, template, actor);
         }
+    }
+
+    private void failJob(Job job, String message, Throwable cause, ContainerCreateRequest request,
+                         Optional<TemplateInfo> template, AuthenticatedUser actor) {
+        job.fail(CreationJobStatus.FAILED, message, cause);
+        auditService.record(withRequestDetails(AuditEvent.failure(actor.getUsername(), AuditAction.CONTAINER_CREATE,
+                request.name(), "Could not create container '" + request.name() + "'", message), request, template));
+    }
+
+    private static AuditEvent withRequestDetails(AuditEvent event, ContainerCreateRequest request,
+                                                 Optional<TemplateInfo> template) {
+        return event.detail("image", request.image())
+                .detail("template", template.map(info -> info.template().id()).orElse(null));
     }
 
     private boolean imageExists(String image) {

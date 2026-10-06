@@ -1,5 +1,7 @@
 package com.github.kevinldg.backend.role;
 
+import com.github.kevinldg.backend.audit.AuditAction;
+import com.github.kevinldg.backend.audit.AuditService;
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
 import com.github.kevinldg.backend.common.ApiException;
 import com.github.kevinldg.backend.user.UserRepository;
@@ -16,12 +18,14 @@ import org.springframework.http.HttpStatus;
 
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -29,6 +33,9 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class RoleManagementServiceTest {
+
+    @Mock
+    AuditService auditService;
 
     @Mock
     RoleRepository roleRepository;
@@ -49,7 +56,7 @@ class RoleManagementServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new RoleManagementService(roleRepository, userRepository);
+        service = new RoleManagementService(roleRepository, userRepository, auditService);
         adminRole = role("role-admin", "Admin", true, true, Set.of());
         userRole = role("role-user", "User", true, false, EnumSet.of(Permission.DASHBOARD_VIEW));
         customRole = role("role-custom", "Streamers", false, false, EnumSet.of(Permission.CONTAINER_START));
@@ -126,6 +133,8 @@ class RoleManagementServiceTest {
         RoleResponse response = service.updateRole("role-user",
                 new RoleRequest("User", EnumSet.of(Permission.DASHBOARD_VIEW, Permission.CONTAINER_LOGS_VIEW)), admin);
         assertThat(response.permissions()).contains(Permission.CONTAINER_LOGS_VIEW);
+        verify(auditService).record(argThat(event -> event.action() == AuditAction.ROLE_UPDATE
+                && event.details().equals(Map.of("added", "CONTAINER_LOGS_VIEW"))));
 
         assertStatus(() -> service.updateRole("role-user", new RoleRequest("Players", Set.of()), admin), HttpStatus.CONFLICT);
     }
@@ -137,6 +146,8 @@ class RoleManagementServiceTest {
         RoleResponse response = service.updateRole("role-custom", new RoleRequest("Helpers", Set.of()), admin);
 
         assertThat(response.name()).isEqualTo("Helpers");
+        verify(auditService).record(argThat(event -> event.target().equals("Helpers")
+                && event.details().equals(Map.of("name", "Streamers → Helpers", "removed", "CONTAINER_START"))));
     }
 
     @Test

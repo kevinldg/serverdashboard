@@ -45,7 +45,7 @@ public class ContainerController {
     public ContainerDetailsResponse getDetails(@PathVariable @Pattern(regexp = CONTAINER_ID_PATTERN) String id,
                                                @AuthenticationPrincipal AuthenticatedUser user) {
         boolean includeEnvironment = user.getPermissions().contains(Permission.CONTAINER_ENV_VIEW);
-        return containerService.getDetails(id, includeEnvironment);
+        return containerService.getDetails(id, includeEnvironment, user.getUsername());
     }
 
     @GetMapping("/{id}/logs")

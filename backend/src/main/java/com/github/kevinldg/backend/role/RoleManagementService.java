@@ -1,10 +1,12 @@
 package com.github.kevinldg.backend.role;
 
+import com.github.kevinldg.backend.audit.AuditAction;
+import com.github.kevinldg.backend.audit.AuditEvent;
+import com.github.kevinldg.backend.audit.AuditService;
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
 import com.github.kevinldg.backend.common.ApiException;
 import com.github.kevinldg.backend.user.UserRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -30,13 +32,13 @@ import java.util.stream.Collectors;
  * </ul>
  * Permission changes apply to affected users with their next request.
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RoleManagementService {
 
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
+    private final AuditService auditService;
 
     public List<RoleResponse> listRoles() {
         return roleRepository.findAll().stream()
@@ -67,7 +69,9 @@ public class RoleManagementService {
         role.setUpdatedAt(role.getCreatedAt());
         Role saved = save(role);
 
-        log.info("User '{}' created role '{}' with permissions {}", actor.getUsername(), name, sorted(request.permissions()));
+        auditService.record(AuditEvent.success(actor.getUsername(), AuditAction.ROLE_CREATE, name,
+                        "Created role '" + name + "'")
+                .detail("permissions", format(sorted(request.permissions()))));
         return toResponse(saved);
     }
 
@@ -89,13 +93,21 @@ public class RoleManagementService {
         requireMayGrant(role.getPermissions(), request.permissions(), actor);
 
         Set<Permission> previous = sorted(role.getPermissions());
+        String previousName = role.getName();
         role.setName(name);
         role.setPermissions(new HashSet<>(request.permissions()));
         role.setUpdatedAt(Instant.now());
         Role saved = save(role);
 
-        log.info("User '{}' updated role '{}': permissions {} -> {}", actor.getUsername(), name, previous,
-                sorted(request.permissions()));
+        Set<Permission> added = sorted(request.permissions());
+        added.removeAll(previous);
+        Set<Permission> removed = sorted(previous);
+        removed.removeAll(request.permissions());
+        auditService.record(AuditEvent.success(actor.getUsername(), AuditAction.ROLE_UPDATE, name,
+                        "Updated role '" + name + "'")
+                .detail("name", previousName.equals(name) ? null : previousName + " → " + name)
+                .detail("added", added.isEmpty() ? null : format(added))
+                .detail("removed", removed.isEmpty() ? null : format(removed)));
         return toResponse(saved);
     }
 
@@ -111,7 +123,8 @@ public class RoleManagementService {
         }
 
         roleRepository.delete(role);
-        log.info("User '{}' deleted role '{}'", actor.getUsername(), role.getName());
+        auditService.record(AuditEvent.success(actor.getUsername(), AuditAction.ROLE_DELETE, role.getName(),
+                "Deleted role '" + role.getName() + "'"));
     }
 
     /**
@@ -156,8 +169,13 @@ public class RoleManagementService {
                 role.effectivePermissions(), userRepository.countByRoleId(role.getId()));
     }
 
+    /** A modifiable, ordered copy. */
     private static Set<Permission> sorted(Set<Permission> permissions) {
-        return permissions == null ? Set.of() : permissions.stream()
+        return permissions == null ? EnumSet.noneOf(Permission.class) : permissions.stream()
                 .collect(Collectors.toCollection(() -> EnumSet.noneOf(Permission.class)));
+    }
+
+    private static String format(Set<Permission> permissions) {
+        return permissions.isEmpty() ? "none" : permissions.stream().map(Permission::name).collect(Collectors.joining(", "));
     }
 }

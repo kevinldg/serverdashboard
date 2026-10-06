@@ -1,5 +1,7 @@
 package com.github.kevinldg.backend.setup;
 
+import com.github.kevinldg.backend.audit.AuditEntry;
+import com.github.kevinldg.backend.audit.AuditProperties;
 import com.github.kevinldg.backend.role.Permission;
 import com.github.kevinldg.backend.role.Role;
 import com.github.kevinldg.backend.role.RoleRepository;
@@ -12,17 +14,21 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoOperations;
 import org.springframework.data.mongodb.core.index.Index;
+import org.springframework.data.mongodb.core.index.IndexOperations;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 /**
- * Prepares the database on startup: indexes, the built-in roles, and the initial admin user.
+ * Prepares the database on startup: indexes (including the audit log's retention), the built-in roles, and the
+ * initial admin user.
  * Existing data is never overwritten.
  */
 @Slf4j
@@ -33,6 +39,8 @@ public class DataInitializer implements ApplicationRunner {
     static final String ADMIN_ROLE = "Admin";
     static final String MODERATOR_ROLE = "Moderator";
     static final String USER_ROLE = "User";
+
+    static final String AUDIT_TTL_INDEX = "timestamp_ttl";
 
     static final Set<Permission> USER_PERMISSIONS = EnumSet.of(
             Permission.DASHBOARD_VIEW,
@@ -52,6 +60,7 @@ public class DataInitializer implements ApplicationRunner {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final InitialAdminProperties initialAdmin;
+    private final AuditProperties auditProperties;
 
     @Override
     public void run(ApplicationArguments args) {
@@ -65,6 +74,24 @@ public class DataInitializer implements ApplicationRunner {
     private void createIndexes() {
         mongoOperations.indexOps(User.class).createIndex(new Index().on("username", Sort.Direction.ASC).unique());
         mongoOperations.indexOps(Role.class).createIndex(new Index().on("name", Sort.Direction.ASC).unique());
+        createAuditRetentionIndex();
+    }
+
+    /**
+     * MongoDB deletes audit log entries after the retention period. An index with a different (previously configured)
+     * retention cannot be updated by creating it again, so it is replaced.
+     */
+    private void createAuditRetentionIndex() {
+        IndexOperations indexOps = mongoOperations.indexOps(AuditEntry.class);
+        Duration retention = auditProperties.retention();
+        boolean outdated = indexOps.getIndexInfo().stream()
+                .anyMatch(index -> AUDIT_TTL_INDEX.equals(index.getName())
+                        && !index.getExpireAfter().equals(Optional.of(retention)));
+        if (outdated) {
+            indexOps.dropIndex(AUDIT_TTL_INDEX);
+            log.info("Changing the audit log retention to {} days", retention.toDays());
+        }
+        indexOps.createIndex(new Index().on("timestamp", Sort.Direction.ASC).named(AUDIT_TTL_INDEX).expire(retention));
     }
 
     private Role ensureRole(String name, boolean superuser, Set<Permission> permissions) {

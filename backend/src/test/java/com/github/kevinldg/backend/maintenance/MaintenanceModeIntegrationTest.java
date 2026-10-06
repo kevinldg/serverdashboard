@@ -1,5 +1,6 @@
 package com.github.kevinldg.backend.maintenance;
 
+import com.github.kevinldg.backend.audit.AuditLogRepository;
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
 import com.github.kevinldg.backend.role.Permission;
 import com.github.kevinldg.backend.role.Role;
@@ -34,6 +35,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(properties = "spring.mongodb.uri=mongodb://localhost:27017/serverdashboard-test")
+// Audit entries are not stored
+@MockitoBean(types = AuditLogRepository.class)
 @AutoConfigureMockMvc
 class MaintenanceModeIntegrationTest {
 

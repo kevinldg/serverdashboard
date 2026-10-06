@@ -1,5 +1,6 @@
 package com.github.kevinldg.backend.announcement;
 
+import com.github.kevinldg.backend.audit.AuditService;
 import com.github.kevinldg.backend.announcement.AnnouncementResponse.Status;
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
 import com.github.kevinldg.backend.common.ApiException;
@@ -26,6 +27,8 @@ import static org.mockito.Mockito.when;
 
 class AnnouncementServiceTest {
 
+    private final AuditService auditService = mock(AuditService.class);
+
     private static final Instant NOW = Instant.parse("2026-10-03T12:00:00Z");
 
     private final AnnouncementRepository repository = mock(AnnouncementRepository.class);
@@ -35,7 +38,7 @@ class AnnouncementServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new AnnouncementService(repository, Clock.fixed(NOW, ZoneOffset.UTC));
+        service = new AnnouncementService(repository, auditService, Clock.fixed(NOW, ZoneOffset.UTC));
         when(repository.save(any(Announcement.class))).thenAnswer(invocation -> {
             Announcement announcement = invocation.getArgument(0);
             if (announcement.getId() == null) {

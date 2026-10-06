@@ -5,6 +5,7 @@ import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.command.LogContainerCmd;
 import com.github.dockerjava.api.model.Frame;
 import com.github.dockerjava.api.model.StreamType;
+import com.github.kevinldg.backend.audit.AuditService;
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
 import com.github.kevinldg.backend.auth.AuthenticatedUserService;
 import com.github.kevinldg.backend.common.ApiException;
@@ -33,6 +34,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ContainerLogStreamServiceTest {
+
+    private final AuditService auditService = mock(AuditService.class);
 
     private final DockerClient dockerClient = mock(DockerClient.class);
     private final ContainerService containerService = mock(ContainerService.class);
@@ -94,7 +97,7 @@ class ContainerLogStreamServiceTest {
     @Test
     void missingContainerFailsBeforeStreaming() {
         createService(Duration.ofMinutes(30), Duration.ofSeconds(15), 20);
-        when(containerService.getState("gone")).thenThrow(new ApiException(HttpStatus.NOT_FOUND, "gone"));
+        when(containerService.getName("gone")).thenThrow(new ApiException(HttpStatus.NOT_FOUND, "gone"));
 
         assertThatThrownBy(() -> service.openStream("gone", user))
                 .isInstanceOfSatisfying(ApiException.class, ex -> assertThat(ex.getStatus()).isEqualTo(HttpStatus.NOT_FOUND));
@@ -160,7 +163,7 @@ class ContainerLogStreamServiceTest {
             return dockerCallback;
         });
         service = new ContainerLogStreamService(dockerClient, containerService, authenticatedUserService,
-                new LogStreamProperties(maxDuration, heartbeatInterval, maxConcurrent), maintenanceService) {
+                new LogStreamProperties(maxDuration, heartbeatInterval, maxConcurrent), maintenanceService, auditService) {
             @Override
             SseEmitter createEmitter(long timeoutMillis) {
                 return new SseEmitter(timeoutMillis) {

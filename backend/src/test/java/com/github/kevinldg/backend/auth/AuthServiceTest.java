@@ -1,5 +1,6 @@
 package com.github.kevinldg.backend.auth;
 
+import com.github.kevinldg.backend.audit.AuditService;
 import com.github.kevinldg.backend.common.ApiException;
 import com.github.kevinldg.backend.role.Permission;
 import com.github.kevinldg.backend.role.Role;
@@ -28,6 +29,9 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 
+    @Mock
+    AuditService auditService;
+
     private static final String PASSWORD = "correct-password-123";
 
     @Mock
@@ -43,7 +47,7 @@ class AuthServiceTest {
 
     @BeforeEach
     void setUp() {
-        authService = new AuthService(userRepository, roleRepository, passwordEncoder);
+        authService = new AuthService(userRepository, roleRepository, passwordEncoder, auditService);
 
         user = new User();
         user.setId("user-1");

@@ -2,6 +2,9 @@ package com.github.kevinldg.backend.configfile;
 
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.InspectContainerResponse;
+import com.github.kevinldg.backend.audit.AuditAction;
+import com.github.kevinldg.backend.audit.AuditEvent;
+import com.github.kevinldg.backend.audit.AuditService;
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
 import com.github.kevinldg.backend.common.ApiException;
 import com.github.kevinldg.backend.common.PosixPaths;
@@ -20,7 +23,6 @@ import com.github.kevinldg.backend.gameserver.GameServerService.ContainerRef;
 import com.github.kevinldg.backend.gameserver.GameServerStatus;
 import com.github.kevinldg.backend.gameserver.profile.GameServerProfile;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -53,8 +55,8 @@ import java.util.stream.Collectors;
  *     <li>Saving requires the hash of the loaded version (conflict detection), keeps owner, group and permissions,
  *         and stores the previous content as backup (one version per file).</li>
  * </ul>
+ * Opening files and backups, saving, and failed saves are recorded in the audit log (never the content).
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ConfigFileService {
@@ -69,6 +71,7 @@ public class ConfigFileService {
     private final ContainerFiles containerFiles;
     private final GameServerService gameServerService;
     private final ConfigFileBackupRepository backupRepository;
+    private final AuditService auditService;
     private final Clock clock;
 
     public Overview getOverview(String containerId) {
@@ -96,10 +99,15 @@ public class ConfigFileService {
         return new DirectoryListing(path, entries);
     }
 
-    public FileContent readFile(String containerId, String filePath) {
+    /**
+     * @param viewer username, for the audit log
+     */
+    public FileContent readFile(String containerId, String filePath, String viewer) {
         Context context = context(containerId);
         String path = requireEditablePath(filePath, context);
         FileData file = readTextFile(context, path);
+        auditService.recordDeduplicated(AuditEvent.success(viewer, AuditAction.CONFIG_FILE_OPEN, context.name(),
+                "Opened '" + path + "' in container '" + context.name() + "'"));
 
         Optional<ConfigFileBackup> backup = backupRepository.findById(ConfigFileBackup.idOf(context.name(), path));
         return new FileContent(path, new String(file.content(), StandardCharsets.UTF_8), sha256(file.content()),
@@ -109,37 +117,52 @@ public class ConfigFileService {
 
     public SaveResponse saveFile(String containerId, String filePath, String content, String expectedSha256,
                                  AuthenticatedUser actor) {
-        Context context = context(containerId);
-        String path = requireEditablePath(filePath, context);
-        byte[] newContent = content.getBytes(StandardCharsets.UTF_8);
-        if (newContent.length > MAX_FILE_SIZE) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "The file is too large (maximum 1 MB).");
+        String containerName = containerId;
+        try {
+            Context context = context(containerId);
+            containerName = context.name();
+            String path = requireEditablePath(filePath, context);
+            byte[] newContent = content.getBytes(StandardCharsets.UTF_8);
+            if (newContent.length > MAX_FILE_SIZE) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "The file is too large (maximum 1 MB).");
+            }
+
+            FileData current = readTextFile(context, path);
+            if (!sha256(current.content()).equals(expectedSha256)) {
+                throw new ApiException(HttpStatus.CONFLICT,
+                        "The file was changed in the meantime (e.g. by the game server). Reload it and apply your changes again.");
+            }
+
+            ConfigFileBackup backup = new ConfigFileBackup();
+            backup.setId(ConfigFileBackup.idOf(context.name(), path));
+            backup.setContent(new String(current.content(), StandardCharsets.UTF_8));
+            backup.setReplacedAt(clock.instant());
+            backup.setReplacedBy(actor.getUsername());
+            backupRepository.save(backup);
+
+            containerFiles.write(context.id(), path, newContent, current.mode(), current.userId(), current.groupId());
+            auditService.record(AuditEvent.success(actor.getUsername(), AuditAction.CONFIG_FILE_SAVE, context.name(),
+                    "Saved '" + path + "' in container '" + context.name() + "'"));
+            return new SaveResponse(path, sha256(newContent), clock.instant());
+        } catch (RuntimeException e) {
+            auditService.record(AuditEvent.failure(actor.getUsername(), AuditAction.CONFIG_FILE_SAVE, containerName,
+                    "Could not save '" + filePath + "' in container '" + containerName + "'", e.getMessage()));
+            throw e;
         }
-
-        FileData current = readTextFile(context, path);
-        if (!sha256(current.content()).equals(expectedSha256)) {
-            throw new ApiException(HttpStatus.CONFLICT,
-                    "The file was changed in the meantime (e.g. by the game server). Reload it and apply your changes again.");
-        }
-
-        ConfigFileBackup backup = new ConfigFileBackup();
-        backup.setId(ConfigFileBackup.idOf(context.name(), path));
-        backup.setContent(new String(current.content(), StandardCharsets.UTF_8));
-        backup.setReplacedAt(clock.instant());
-        backup.setReplacedBy(actor.getUsername());
-        backupRepository.save(backup);
-
-        containerFiles.write(context.id(), path, newContent, current.mode(), current.userId(), current.groupId());
-        log.info("User '{}' saved '{}' in container '{}'", actor.getUsername(), path, context.name());
-        return new SaveResponse(path, sha256(newContent), clock.instant());
     }
 
-    public Backup getBackup(String containerId, String filePath) {
+    /**
+     * @param viewer username, for the audit log
+     */
+    public Backup getBackup(String containerId, String filePath, String viewer) {
         Context context = context(containerId);
         String path = requireEditablePath(filePath, context);
-        return backupRepository.findById(ConfigFileBackup.idOf(context.name(), path))
-                .map(backup -> new Backup(path, backup.getContent(), backup.getReplacedAt(), backup.getReplacedBy()))
+        Backup backup = backupRepository.findById(ConfigFileBackup.idOf(context.name(), path))
+                .map(b -> new Backup(path, b.getContent(), b.getReplacedAt(), b.getReplacedBy()))
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "There is no previous version of this file."));
+        auditService.recordDeduplicated(AuditEvent.success(viewer, AuditAction.CONFIG_FILE_BACKUP_VIEW, context.name(),
+                "Viewed the previous version of '" + path + "' in container '" + context.name() + "'"));
+        return backup;
     }
 
     /** What the rules depend on: game server status, profile, roots, and whether the container is running. */

@@ -12,6 +12,9 @@ import com.github.dockerjava.api.model.HostConfig;
 import com.github.dockerjava.api.model.NetworkSettings;
 import com.github.dockerjava.api.model.Ports;
 import com.github.dockerjava.api.model.RestartPolicy;
+import com.github.kevinldg.backend.audit.AuditAction;
+import com.github.kevinldg.backend.audit.AuditEvent;
+import com.github.kevinldg.backend.audit.AuditService;
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
 import com.github.kevinldg.backend.common.ApiException;
 import com.github.kevinldg.backend.container.ContainerDetailsResponse.Configuration;
@@ -45,6 +48,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /**
@@ -53,6 +57,7 @@ import java.util.function.Supplier;
  * Docker errors are translated into {@link ApiException}s with user-friendly messages;
  * the original error is attached as cause (shown to administrators only).
  * Actions are idempotent: e.g. starting a running container succeeds without doing anything.
+ * Actions that change something, failed actions, and viewing environment variables are recorded in the audit log.
  */
 @Slf4j
 @Service
@@ -70,6 +75,7 @@ public class ContainerService {
     private final DockerClient dockerClient;
     private final DockerProperties dockerProperties;
     private final GameServerService gameServerService;
+    private final AuditService auditService;
 
     public ContainerOverviewResponse getOverview() {
         List<Container> containers = callDocker(() -> dockerClient.listContainersCmd().withShowAll(true).exec());
@@ -92,13 +98,19 @@ public class ContainerService {
 
     /**
      * @param includeEnvironment whether environment variables may be returned (they often contain secrets)
+     * @param viewer             username, for the audit log entry when environment variables are returned
      */
-    public ContainerDetailsResponse getDetails(String containerId, boolean includeEnvironment) {
+    public ContainerDetailsResponse getDetails(String containerId, boolean includeEnvironment, String viewer) {
         InspectContainerResponse container = callDocker(() -> dockerClient.inspectContainerCmd(containerId).exec());
         InspectContainerResponse.ContainerState state = container.getState();
         ContainerConfig config = container.getConfig();
         ContainerRef gameServerRef = new ContainerRef(stripLeadingSlash(container.getName()),
                 config != null ? config.getImage() : null, config != null ? config.getLabels() : null);
+        List<EnvironmentVariable> environment = includeEnvironment ? toEnvironment(config) : null;
+        if (environment != null && !environment.isEmpty()) {
+            auditService.recordDeduplicated(AuditEvent.success(viewer, AuditAction.CONTAINER_ENV_VIEW,
+                    gameServerRef.name(), "Viewed the environment variables of container '" + gameServerRef.name() + "'"));
+        }
 
         return new ContainerDetailsResponse(
                 container.getId(),
@@ -114,7 +126,7 @@ public class ContainerService {
                 container.getRestartCount(),
                 toMounts(container.getMounts()),
                 new Configuration(
-                        includeEnvironment ? toEnvironment(config) : null,
+                        environment,
                         !includeEnvironment,
                         toRestartPolicy(container.getHostConfig()),
                         toPorts(container.getNetworkSettings()),
@@ -145,56 +157,60 @@ public class ContainerService {
     }
 
     public void start(String containerId, String actor) {
-        boolean changed = runDockerAction(() -> dockerClient.startContainerCmd(containerId).exec());
-        logAction(actor, "started", containerId, changed);
+        performAction(containerId, actor, AuditAction.CONTAINER_START, "start", "Started", container ->
+                runDockerAction(() -> dockerClient.startContainerCmd(containerId).exec()));
     }
 
     /**
      * Sends SIGTERM and gives the container {@code app.docker.stop-timeout} to shut down before Docker kills it.
      */
     public void stop(String containerId, String actor) {
-        requireNotSelf(inspect(containerId), "stopped");
-        boolean changed = runDockerAction(
-                () -> dockerClient.stopContainerCmd(containerId).withTimeout(stopTimeoutSeconds()).exec());
-        logAction(actor, "stopped", containerId, changed);
+        performAction(containerId, actor, AuditAction.CONTAINER_STOP, "stop", "Stopped", container -> {
+            requireNotSelf(container, "stopped");
+            return runDockerAction(
+                    () -> dockerClient.stopContainerCmd(containerId).withTimeout(stopTimeoutSeconds()).exec());
+        });
     }
 
     public void restart(String containerId, String actor) {
-        requireNotSelf(inspect(containerId), "restarted");
-        runDockerAction(() -> dockerClient.restartContainerCmd(containerId).withTimeout(stopTimeoutSeconds()).exec());
-        logAction(actor, "restarted", containerId, true);
+        performAction(containerId, actor, AuditAction.CONTAINER_RESTART, "restart", "Restarted", container -> {
+            requireNotSelf(container, "restarted");
+            runDockerAction(() -> dockerClient.restartContainerCmd(containerId).withTimeout(stopTimeoutSeconds()).exec());
+            return true;
+        });
     }
 
     /**
      * Kills the container immediately (SIGKILL), without a clean shutdown.
      */
     public void forceStop(String containerId, String actor) {
-        InspectContainerResponse container = inspect(containerId);
-        requireNotSelf(container, "stopped");
-        // Docker rejects killing a container that is not running; treat that as "already stopped".
-        if (STOPPED_STATES.contains(container.getState() != null ? container.getState().getStatus() : null)) {
-            logAction(actor, "force-stopped", containerId, false);
-            return;
-        }
-        runDockerAction(() -> dockerClient.killContainerCmd(containerId).exec());
-        logAction(actor, "force-stopped", containerId, true);
+        performAction(containerId, actor, AuditAction.CONTAINER_FORCE_STOP, "force-stop", "Force-stopped", container -> {
+            requireNotSelf(container, "stopped");
+            // Docker rejects killing a container that is not running; treat that as "already stopped".
+            if (STOPPED_STATES.contains(container.getState() != null ? container.getState().getStatus() : null)) {
+                return false;
+            }
+            runDockerAction(() -> dockerClient.killContainerCmd(containerId).exec());
+            return true;
+        });
     }
 
     /**
      * Deletes a stopped container. Volumes are never removed, so persistent data is kept.
      */
     public void delete(String containerId, String actor) {
-        InspectContainerResponse container = inspect(containerId);
-        requireNotSelf(container, "deleted");
-        if (!STOPPED_STATES.contains(container.getState() != null ? container.getState().getStatus() : null)) {
-            throw new ApiException(HttpStatus.CONFLICT, "Stop the container before deleting it.");
-        }
-        runDockerAction(() -> dockerClient.removeContainerCmd(containerId)
-                .withRemoveVolumes(false)
-                .withForce(false)
-                .exec());
-        gameServerService.removeClassification(stripLeadingSlash(container.getName()));
-        log.info("User '{}' deleted container '{}' (volumes kept)", actor, containerId);
+        performAction(containerId, actor, AuditAction.CONTAINER_DELETE, "delete", "Deleted", container -> {
+            requireNotSelf(container, "deleted");
+            if (!STOPPED_STATES.contains(container.getState() != null ? container.getState().getStatus() : null)) {
+                throw new ApiException(HttpStatus.CONFLICT, "Stop the container before deleting it.");
+            }
+            runDockerAction(() -> dockerClient.removeContainerCmd(containerId)
+                    .withRemoveVolumes(false)
+                    .withForce(false)
+                    .exec());
+            gameServerService.removeClassification(stripLeadingSlash(container.getName()));
+            return true;
+        });
     }
 
     /**
@@ -205,10 +221,9 @@ public class ContainerService {
         gameServerService.classify(stripLeadingSlash(inspect(containerId).getName()), request, actor);
     }
 
-    /** Current Docker state of the container, e.g. "running"; 404 if it does not exist. */
-    String getState(String containerId) {
-        InspectContainerResponse container = inspect(containerId);
-        return container.getState() != null ? container.getState().getStatus() : null;
+    /** Name of the container (without leading slash); 404 if it does not exist. */
+    String getName(String containerId) {
+        return stripLeadingSlash(inspect(containerId).getName());
     }
 
     private static void requireNotSelf(InspectContainerResponse container, String action) {
@@ -247,11 +262,28 @@ public class ContainerService {
         });
     }
 
-    private static void logAction(String actor, String action, String containerId, boolean changed) {
-        if (changed) {
-            log.info("User '{}' {} container '{}'", actor, action, containerId);
-        } else {
-            log.info("User '{}' requested: {} container '{}' (no change, already in that state)", actor, action, containerId);
+    /**
+     * Runs a container action and records it in the audit log: changes and failures are recorded, requests that
+     * changed nothing (the container was already in the requested state) are only logged.
+     *
+     * @param action returns false if nothing changed
+     */
+    private void performAction(String containerId, String actor, AuditAction auditAction, String verb,
+                               String pastTense, Predicate<InspectContainerResponse> action) {
+        String name = containerId;
+        try {
+            InspectContainerResponse container = inspect(containerId);
+            name = stripLeadingSlash(container.getName());
+            if (action.test(container)) {
+                AuditEvent event = AuditEvent.success(actor, auditAction, name, pastTense + " container '" + name + "'");
+                auditService.record(auditAction == AuditAction.CONTAINER_DELETE ? event.detail("volumes", "kept") : event);
+            } else {
+                log.info("User '{}' requested: {} container '{}' (no change, already in that state)", actor, verb, name);
+            }
+        } catch (RuntimeException e) {
+            auditService.record(AuditEvent.failure(actor, auditAction, name,
+                    "Could not " + verb + " container '" + name + "'", e.getMessage()));
+            throw e;
         }
     }
 

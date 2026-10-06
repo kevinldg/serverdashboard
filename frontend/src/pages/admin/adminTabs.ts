@@ -7,4 +7,5 @@ export const ADMIN_TABS: { path: string; label: string; permission: Permission }
     { path: "announcements", label: "Announcements", permission: "ANNOUNCEMENT_MANAGE" },
     { path: "maintenance", label: "Maintenance", permission: "MAINTENANCE_MANAGE" },
     { path: "system", label: "System", permission: "SYSTEM_INFO_VIEW" },
+    { path: "audit-log", label: "Audit log", permission: "AUDIT_LOG_VIEW" },
 ];

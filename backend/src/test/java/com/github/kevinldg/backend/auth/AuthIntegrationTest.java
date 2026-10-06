@@ -1,5 +1,8 @@
 package com.github.kevinldg.backend.auth;
 
+import com.github.kevinldg.backend.audit.AuditAction;
+import com.github.kevinldg.backend.audit.AuditLogRepository;
+import com.github.kevinldg.backend.audit.AuditOutcome;
 import com.github.kevinldg.backend.maintenance.MaintenanceSettingsRepository;
 import com.github.kevinldg.backend.role.Permission;
 import com.github.kevinldg.backend.role.Role;
@@ -45,7 +48,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = "spring.mongodb.uri=mongodb://localhost:27017/serverdashboard-test")
 // The maintenance state would otherwise be read from MongoDB; unknown means "off".
-@MockitoBean(types = MaintenanceSettingsRepository.class)
+@MockitoBean(types = {MaintenanceSettingsRepository.class, AuditLogRepository.class})
 @AutoConfigureMockMvc
 class AuthIntegrationTest {
 
@@ -56,6 +59,9 @@ class AuthIntegrationTest {
 
     @Autowired
     PasswordEncoder passwordEncoder;
+
+    @Autowired
+    AuditLogRepository auditLogRepository;
 
     @MockitoBean
     UserRepository userRepository;
@@ -140,16 +146,23 @@ class AuthIntegrationTest {
                 .andExpect(jsonPath("$.passwordHash").doesNotExist());
 
         verify(userRepository).save(argThat(saved -> saved.getLastLoginAt() != null));
+        verify(auditLogRepository).save(argThat(entry -> entry.getAction() == AuditAction.LOGIN
+                && entry.getActor().equals("alice")
+                && "127.0.0.1".equals(entry.getIp())));
     }
 
     @Test
     void loginWithWrongPasswordFails() throws Exception {
+        when(userRepository.existsByUsername("alice")).thenReturn(true);
+
         mockMvc.perform(post("/api/auth/login").with(xsrf())
                         .param("username", "alice")
                         .param("password", "wrong-password"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.detail").value("Invalid username or password."));
+
+        verifyFailedLoginRecorded("alice", "Login failed: wrong password");
     }
 
     @Test
@@ -159,6 +172,8 @@ class AuthIntegrationTest {
                         .param("password", PASSWORD))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.detail").value("Invalid username or password."));
+
+        verifyFailedLoginRecorded("bob", "Login failed: unknown user");
     }
 
     @Test
@@ -170,6 +185,8 @@ class AuthIntegrationTest {
                         .param("password", PASSWORD))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.detail").value("Invalid username or password."));
+
+        verifyFailedLoginRecorded("alice", "Login failed: account deactivated");
     }
 
     @Test
@@ -240,6 +257,9 @@ class AuthIntegrationTest {
 
         mockMvc.perform(get("/api/auth/me").session(session))
                 .andExpect(status().isUnauthorized());
+        verify(auditLogRepository).save(argThat(entry -> entry.getAction() == AuditAction.LOGOUT
+                && entry.getActor().equals("alice")
+                && "127.0.0.1".equals(entry.getIp())));
     }
 
     @Test
@@ -269,6 +289,18 @@ class AuthIntegrationTest {
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("The current password is incorrect."));
+        // Only login events store the client address
+        verify(auditLogRepository).save(argThat(entry -> entry.getAction() == AuditAction.PASSWORD_CHANGE
+                && entry.getOutcome() == AuditOutcome.FAILURE
+                && entry.getIp() == null));
+    }
+
+    private void verifyFailedLoginRecorded(String actor, String summary) {
+        verify(auditLogRepository).save(argThat(entry -> entry.getAction() == AuditAction.LOGIN_FAILED
+                && entry.getOutcome() == AuditOutcome.FAILURE
+                && entry.getActor().equals(actor)
+                && entry.getSummary().equals(summary)
+                && "127.0.0.1".equals(entry.getIp())));
     }
 
     @Test

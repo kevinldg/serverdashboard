@@ -1,10 +1,12 @@
 package com.github.kevinldg.backend.setup;
 
+import com.github.kevinldg.backend.audit.AuditProperties;
 import com.github.kevinldg.backend.role.Permission;
 import com.github.kevinldg.backend.role.Role;
 import com.github.kevinldg.backend.role.RoleRepository;
 import com.github.kevinldg.backend.user.User;
 import com.github.kevinldg.backend.user.UserRepository;
+import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,9 +14,11 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.mongodb.core.MongoOperations;
+import org.springframework.data.mongodb.core.index.IndexInfo;
 import org.springframework.data.mongodb.core.index.IndexOperations;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -31,6 +35,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class DataInitializerTest {
+
+    private static final Duration RETENTION = Duration.ofDays(365);
 
     @Mock
     MongoOperations mongoOperations;
@@ -89,7 +95,31 @@ class DataInitializerTest {
         assertThat(admin.getValue().isActive()).isTrue();
         assertThat(admin.getValue().isPasswordChangeRecommended()).isTrue();
 
-        verify(indexOperations, times(2)).createIndex(any());
+        // username, role name, audit log retention
+        verify(indexOperations, times(3)).createIndex(any());
+    }
+
+    @Test
+    void replacesAuditRetentionIndexWhenTheRetentionChanged() {
+        stubExistingRoles();
+        when(userRepository.existsByRoleId("id-Admin")).thenReturn(true);
+        when(indexOperations.getIndexInfo()).thenReturn(List.of(ttlIndex(Duration.ofDays(90))));
+
+        initializer("admin", "initial-password").run(null);
+
+        verify(indexOperations).dropIndex(DataInitializer.AUDIT_TTL_INDEX);
+        verify(indexOperations, times(3)).createIndex(any());
+    }
+
+    @Test
+    void keepsAuditRetentionIndexWithUnchangedRetention() {
+        stubExistingRoles();
+        when(userRepository.existsByRoleId("id-Admin")).thenReturn(true);
+        when(indexOperations.getIndexInfo()).thenReturn(List.of(ttlIndex(RETENTION)));
+
+        initializer("admin", "initial-password").run(null);
+
+        verify(indexOperations, never()).dropIndex(anyString());
     }
 
     @Test
@@ -124,6 +154,12 @@ class DataInitializerTest {
         verify(userRepository, never()).save(any());
     }
 
+    private static IndexInfo ttlIndex(Duration expireAfter) {
+        return IndexInfo.indexInfoOf(new Document("name", DataInitializer.AUDIT_TTL_INDEX)
+                .append("key", new Document("timestamp", 1))
+                .append("expireAfterSeconds", expireAfter.toSeconds()));
+    }
+
     private void stubExistingRoles() {
         for (String name : List.of("Admin", "Moderator", "User")) {
             Role role = new Role();
@@ -135,6 +171,6 @@ class DataInitializerTest {
 
     private DataInitializer initializer(String username, String password) {
         return new DataInitializer(mongoOperations, roleRepository, userRepository, passwordEncoder,
-                new InitialAdminProperties(username, password));
+                new InitialAdminProperties(username, password), new AuditProperties(RETENTION, Duration.ofMinutes(15)));
     }
 }

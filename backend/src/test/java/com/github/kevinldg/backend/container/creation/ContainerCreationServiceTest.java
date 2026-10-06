@@ -15,6 +15,9 @@ import com.github.dockerjava.api.model.ExposedPort;
 import com.github.dockerjava.api.model.HostConfig;
 import com.github.dockerjava.api.model.MountType;
 import com.github.dockerjava.api.model.PullResponseItem;
+import com.github.kevinldg.backend.audit.AuditAction;
+import com.github.kevinldg.backend.audit.AuditOutcome;
+import com.github.kevinldg.backend.audit.AuditService;
 import com.github.kevinldg.backend.auth.AuthenticatedUser;
 import com.github.kevinldg.backend.common.ApiException;
 import com.github.kevinldg.backend.container.creation.ContainerCreateRequest.EnvironmentVariable;
@@ -40,14 +43,18 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.RETURNS_SELF;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ContainerCreationServiceTest {
+
+    private final AuditService auditService = mock(AuditService.class);
 
     private static final ObjectMapper DOCKER_JSON = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -66,7 +73,7 @@ class ContainerCreationServiceTest {
     @BeforeEach
     void setUp() {
         service = new ContainerCreationService(dockerClient, validator, new ContainerCreationProperties("/srv/gs"),
-                gameServerService, Clock.systemUTC());
+                gameServerService, auditService, Clock.systemUTC());
         when(validator.validate(any())).thenReturn(Optional.empty());
         when(dockerClient.createContainerCmd(any())).thenReturn(createCommand);
         CreateContainerResponse created = new CreateContainerResponse();
@@ -168,6 +175,10 @@ class ContainerCreationServiceTest {
         assertThat(result.containerId()).isEqualTo("new-container-id");
         assertThat(result.error()).contains("host port is already in use");
         assertThat(result.technicalError()).contains("port is already allocated");
+        // Recorded right after the job finished, on the job's thread
+        verify(auditService, timeout(1000)).record(argThat(event -> event.action() == AuditAction.CONTAINER_CREATE
+                && event.outcome() == AuditOutcome.FAILURE
+                && event.summary().endsWith("but it could not be started")));
     }
 
     @Test
@@ -189,6 +200,9 @@ class ContainerCreationServiceTest {
 
         assertThat(result.status()).isEqualTo(CreationJobStatus.FAILED);
         assertThat(result.error()).isEqualTo("A container with this name already exists.");
+        verify(auditService, timeout(1000)).record(argThat(event -> event.action() == AuditAction.CONTAINER_CREATE
+                && event.outcome() == AuditOutcome.FAILURE
+                && event.details().get("error").equals("A container with this name already exists.")));
     }
 
     @Test

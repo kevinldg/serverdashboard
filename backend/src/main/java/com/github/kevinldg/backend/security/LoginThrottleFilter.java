@@ -1,5 +1,6 @@
 package com.github.kevinldg.backend.security;
 
+import com.github.kevinldg.backend.auth.AuthService;
 import com.github.kevinldg.backend.common.ApiException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -24,6 +25,7 @@ class LoginThrottleFilter extends OncePerRequestFilter {
     static final String LOGIN_PATH = "/api/auth/login";
 
     private final LoginThrottle throttle;
+    private final AuthService authService;
     private final HandlerExceptionResolver exceptionResolver;
 
     @Override
@@ -38,6 +40,8 @@ class LoginThrottleFilter extends OncePerRequestFilter {
         Optional<Duration> blocked = throttle.blockedFor(request.getParameter("username"), request.getRemoteAddr());
         if (blocked.isPresent()) {
             long minutes = Math.max(1, (blocked.get().toSeconds() + 59) / 60);
+            authService.recordBlockedLogin(request.getParameter("username"), request.getRemoteAddr(),
+                    "too many failed attempts");
             response.setHeader("Retry-After", String.valueOf(blocked.get().toSeconds()));
             exceptionResolver.resolveException(request, response, null, new ApiException(HttpStatus.TOO_MANY_REQUESTS,
                     "Too many failed login attempts. Try again in " + minutes + (minutes == 1 ? " minute." : " minutes.")));
